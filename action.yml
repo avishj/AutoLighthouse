@@ -10,7 +10,7 @@ inputs:
     required: false
     default: audit
   urls:
-    description: Newline or comma-separated list of URLs to audit.
+    description: Newline-separated list of URLs to audit.
     required: true
   profile:
     description: Device profile for this run (mobile, tablet, or desktop).
