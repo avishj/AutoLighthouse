@@ -5,6 +5,10 @@ branding:
   color: orange
 
 inputs:
+  mode:
+    description: "Action mode: audit (run Lighthouse) or report (aggregate and analyze results)."
+    required: false
+    default: audit
   urls:
     description: Newline or comma-separated list of URLs to audit.
     required: true

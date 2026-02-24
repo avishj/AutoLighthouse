@@ -4,7 +4,7 @@
   "description": "Maximalist Lighthouse CI system for GitHub Actions",
   "main": "dist/index.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --outfile=dist/index.js --sourcemap"
+    "build": "esbuild src/index.ts src/generate-config.ts --bundle --platform=node --target=node24 --outdir=dist --sourcemap"
   },
   "repository": {
     "type": "git",
