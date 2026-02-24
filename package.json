@@ -1,0 +1,30 @@
+{
+  "name": "autolighthouse",
+  "version": "1.0.0",
+  "description": "Maximalist Lighthouse CI system for GitHub Actions",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --outfile=dist/index.js --sourcemap"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avishj/AutoLighthouse.git"
+  },
+  "keywords": [],
+  "author": "Avish Jha <avish.j@pm.me>",
+  "license": "AGPL-3.0",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/avishj/AutoLighthouse/issues"
+  },
+  "homepage": "https://github.com/avishj/AutoLighthouse#readme",
+  "dependencies": {
+    "@actions/core": "^3.0.0",
+    "@actions/github": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.9.3"
+  }
+}
