@@ -1,0 +1,76 @@
+name: AutoLighthouse
+description: Maximalist Lighthouse CI with zero config. Includes preset-based thresholds, multi-URL/multi-profile auditing, serverless regression detection, and automatic GitHub Issue lifecycle management. No hosted LHCI server required.
+branding:
+  icon: zap
+  color: orange
+
+inputs:
+  urls:
+    description: Newline or comma-separated list of URLs to audit.
+    required: true
+  profile:
+    description: Device profile for this run (mobile, tablet, or desktop).
+    required: false
+    default: mobile
+  preset:
+    description: Assertion preset (default, strict, or relaxed).
+    required: false
+    default: default
+  runs:
+    description: Number of Lighthouse runs per URL (median aggregation).
+    required: false
+    default: "5"
+  regression-threshold:
+    description: Percentage increase from rolling average to flag as regression.
+    required: false
+    default: "10"
+  consecutive-fail-limit:
+    description: Consecutive failures before persistent alert.
+    required: false
+    default: "3"
+  fail-on:
+    description: "When to fail the workflow: error, warn, or never."
+    required: false
+    default: error
+  budgets:
+    description: true for built-in budgets, false to disable, or path to custom budget.json.
+    required: false
+    default: "true"
+  create-issues:
+    description: Enable GitHub Issue lifecycle management.
+    required: false
+    default: "true"
+  upload-artifacts:
+    description: Upload Lighthouse results as GitHub Actions artifacts.
+    required: false
+    default: "true"
+  temporary-public-storage:
+    description: Upload reports to temporary public storage for shareable links.
+    required: false
+    default: "true"
+  history-path:
+    description: Path for regression history JSON file. Set to empty string to disable history and regression detection.
+    required: false
+    default: .lighthouse/history.json
+  github-token:
+    description: GitHub token for issue management and history commits.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  results:
+    description: JSON string of all audit results (per-URL metrics, pass/fail, regressions).
+    value: ${{ steps.analyze.outputs.results }}
+  regressions:
+    description: JSON string of detected regressions.
+    value: ${{ steps.analyze.outputs.regressions }}
+  has-regressions:
+    description: "'true' or 'false' for easy conditional use in workflows."
+    value: ${{ steps.analyze.outputs.has-regressions }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run AutoLighthouse
+      shell: bash
+      run: echo "TODO"
