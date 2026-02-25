@@ -17,9 +17,9 @@ inputs:
     required: false
     default: mobile
   preset:
-    description: Assertion preset (default, strict, or relaxed).
+    description: "Assertion preset: strict (default), moderate, or relaxed."
     required: false
-    default: default
+    default: strict
   runs:
     description: Number of Lighthouse runs per URL (median aggregation).
     required: false
