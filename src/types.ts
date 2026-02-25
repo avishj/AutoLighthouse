@@ -41,6 +41,33 @@ export interface Regression {
   percentChange: string;
 }
 
+/** Analysis result for a single URL×profile combination. */
+export interface ProfileResult {
+  profile: Profile;
+  metrics: Metrics;
+  regressions: Regression[];
+  assertions: AssertionResult[];
+  consecutiveFailures: number;
+  passed: boolean;
+  reportLink?: string;
+}
+
+/** Analysis result for a single URL across all profiles. */
+export interface UrlResult {
+  url: string;
+  pathname: string;
+  profiles: ProfileResult[];
+  passed: boolean;
+}
+
+/** Top-level analysis output from report mode. */
+export interface AnalysisResult {
+  urls: UrlResult[];
+  allRegressions: Array<{ url: string; profile: Profile; regressions: Regression[] }>;
+  hasRegressions: boolean;
+  passed: boolean;
+}
+
 /** Assertion result from treosh/lighthouse-ci-action. */
 export interface AssertionResult {
   auditId: string;
