@@ -104,7 +104,7 @@ runs:
     - name: Run Lighthouse
       if: inputs.mode == 'audit'
       id: lighthouse
-      uses: treosh/lighthouse-ci-action@v12
+      uses: treosh/lighthouse-ci-action@fcd65974f7c4c2bf0ee9d09b84d2489183c29726 # v12.6.1
       with:
         urls: ${{ inputs.urls }}
         configPath: ${{ steps.config.outputs.config-path }}
@@ -128,7 +128,7 @@ runs:
 
     - name: Upload audit results
       if: inputs.mode == 'audit'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: autolighthouse-${{ inputs.profile }}
         path: ${{ steps.lighthouse.outputs.resultsPath }}
@@ -138,7 +138,7 @@ runs:
 
     - name: Download audit results
       if: inputs.mode == 'report'
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         pattern: autolighthouse-*
         path: .autolighthouse-results
