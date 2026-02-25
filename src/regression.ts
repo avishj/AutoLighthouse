@@ -35,7 +35,7 @@ export function detectRegressions(
         metric,
         current,
         avg,
-        percentChange: `${(((current - avg) / avg) * 100).toFixed(1)}%`,
+        percentChange: avg > 0 ? `${(((current - avg) / avg) * 100).toFixed(1)}%` : "—",
       });
     }
   }

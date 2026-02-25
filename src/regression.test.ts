@@ -125,6 +125,32 @@ describe("detectRegressions", () => {
     expect(result).toEqual([]);
   });
 
+  it("handles zero average without producing Infinity", () => {
+    const entry = makeEntry([
+      { "cumulative-layout-shift": 0 },
+      { "cumulative-layout-shift": 0 },
+    ]);
+    const metrics = makeMetrics({ "cumulative-layout-shift": 0.1 });
+    const result = detectRegressions(metrics, entry, 10);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metric).toBe("cumulative-layout-shift");
+    expect(result[0].avg).toBe(0);
+    expect(result[0].current).toBe(0.1);
+    expect(result[0].percentChange).not.toContain("Infinity");
+  });
+
+  it("does not regress when both avg and current are zero", () => {
+    const entry = makeEntry([
+      { "cumulative-layout-shift": 0 },
+      { "cumulative-layout-shift": 0 },
+    ]);
+    const metrics = makeMetrics({ "cumulative-layout-shift": 0 });
+    const result = detectRegressions(metrics, entry, 10);
+
+    expect(result.find((r) => r.metric === "cumulative-layout-shift")).toBeUndefined();
+  });
+
   it("detects multiple regressions across different metrics", () => {
     const entry = makeEntry([
       { "first-contentful-paint": 1000, "total-blocking-time": 100 },
