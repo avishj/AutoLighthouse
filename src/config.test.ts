@@ -93,8 +93,16 @@ describe("parseConfig", () => {
     expect(parseConfig().cleanupStalePaths).toBe(false);
   });
 
-  it("handles non-numeric threshold gracefully (NaN)", () => {
+  it("falls back to defaults for non-numeric values", () => {
     process.env.INPUT_REGRESSION_THRESHOLD = "abc";
-    expect(parseConfig().regressionThreshold).toBeNaN();
+    process.env.INPUT_CONSECUTIVE_FAIL_LIMIT = "xyz";
+    process.env.INPUT_STALE_PATH_DAYS = "";
+    process.env.INPUT_MAX_HISTORY_RUNS = "not-a-number";
+
+    const cfg = parseConfig();
+    expect(cfg.regressionThreshold).toBe(10);
+    expect(cfg.consecutiveFailLimit).toBe(3);
+    expect(cfg.stalePathDays).toBe(30);
+    expect(cfg.maxHistoryRuns).toBe(100);
   });
 });
