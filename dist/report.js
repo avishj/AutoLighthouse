@@ -18958,7 +18958,7 @@ function info(message) {
   process.stdout.write(message + os3.EOL);
 }
 
-// src/index.ts
+// src/report.ts
 async function run() {
   try {
     info("AutoLighthouse starting...");
@@ -18977,4 +18977,4 @@ undici/lib/web/fetch/body.js:
 undici/lib/web/websocket/frame.js:
   (*! ws. MIT License. Einar Otto Stangvik <einaros@gmail.com> *)
 */
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=report.js.map

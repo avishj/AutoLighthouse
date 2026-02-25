@@ -2,9 +2,9 @@
   "name": "autolighthouse",
   "version": "1.0.0",
   "description": "Maximalist Lighthouse CI system for GitHub Actions",
-  "main": "dist/index.js",
+  "main": "dist/report.js",
   "scripts": {
-    "build": "esbuild src/index.ts src/generate-config.ts --bundle --platform=node --target=node24 --outdir=dist --sourcemap"
+    "build": "esbuild src/report.ts src/generate-config.ts --bundle --platform=node --target=node24 --outdir=dist --sourcemap"
   },
   "repository": {
     "type": "git",
