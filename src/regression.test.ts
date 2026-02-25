@@ -26,62 +26,123 @@ function makeMetrics(overrides: Partial<Metrics> = {}): Metrics {
 }
 
 describe("detectRegressions", () => {
-  it("returns empty when entry is undefined (no history)", () => {
+  it("no history means no regressions", () => {
     const result = detectRegressions(makeMetrics(), undefined, 10);
     expect(result).toEqual([]);
   });
 
-  it("returns empty when fewer than 2 runs in history", () => {
+  it("needs at least 2 data points before flagging anything", () => {
     const entry = makeEntry([{ "first-contentful-paint": 1000 }]);
     const result = detectRegressions(makeMetrics(), entry, 10);
     expect(result).toEqual([]);
   });
 
-  it("returns empty when exactly at threshold (not over)", () => {
-    const avg = 1000;
+  it("detects a single metric regressing against a varying baseline", () => {
+    // Site with natural FCP variation around ~1000ms
     const entry = makeEntry([
-      { "first-contentful-paint": avg },
-      { "first-contentful-paint": avg },
-    ]);
-    // 10% threshold → 1100 is exactly the boundary, not exceeded
-    const metrics = makeMetrics({ "first-contentful-paint": 1100 });
-    const result = detectRegressions(metrics, entry, 10);
-    expect(result).toEqual([]);
-  });
-
-  it("detects regression when metric exceeds threshold", () => {
-    const entry = makeEntry([
-      { "first-contentful-paint": 1000 },
+      { "first-contentful-paint": 950 },
+      { "first-contentful-paint": 1050 },
+      { "first-contentful-paint": 980 },
+      { "first-contentful-paint": 1020 },
       { "first-contentful-paint": 1000 },
     ]);
-    const metrics = makeMetrics({ "first-contentful-paint": 1200 });
+    // avg = (950+1050+980+1020+1000)/5 = 1000
+    // 1250 is 25% above avg → should trigger at 10% threshold
+    const metrics = makeMetrics({ "first-contentful-paint": 1250 });
     const result = detectRegressions(metrics, entry, 10);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       metric: "first-contentful-paint",
-      current: 1200,
+      current: 1250,
       avg: 1000,
-      percentChange: "20.0%",
+      percentChange: "25.0%",
     });
   });
 
-  it("does not flag metrics that improved (lower is better)", () => {
+  it("normal variation within threshold is not flagged", () => {
+    // Same varying baseline, but current is within normal range
     const entry = makeEntry([
-      { "first-contentful-paint": 1000 },
-      { "first-contentful-paint": 1000 },
+      { "first-contentful-paint": 950, "speed-index": 1400 },
+      { "first-contentful-paint": 1050, "speed-index": 1600 },
+      { "first-contentful-paint": 1000, "speed-index": 1500 },
     ]);
-    const metrics = makeMetrics({ "first-contentful-paint": 800 });
+    // FCP avg=1000, current 1090 is 9% above → within 10% threshold
+    // SI avg=1500, current 1630 is 8.7% above → within 10% threshold
+    const metrics = makeMetrics({
+      "first-contentful-paint": 1090,
+      "speed-index": 1630,
+    });
     const result = detectRegressions(metrics, entry, 10);
     expect(result).toEqual([]);
   });
 
-  it("detects CLS regression (small numbers)", () => {
+  it("exactly at threshold boundary is not a regression", () => {
     const entry = makeEntry([
-      { "cumulative-layout-shift": 0.05 },
-      { "cumulative-layout-shift": 0.05 },
+      { "first-contentful-paint": 900 },
+      { "first-contentful-paint": 1100 },
     ]);
-    // 0.07 is 40% above 0.05 → should trigger at 10% threshold
+    // avg = 1000, 10% threshold → boundary is exactly 1100
+    const metrics = makeMetrics({ "first-contentful-paint": 1100 });
+    const result = detectRegressions(metrics, entry, 10);
+    expect(result).toEqual([]);
+  });
+
+  it("performance improvement is never flagged (lower is better for all metrics)", () => {
+    const entry = makeEntry([
+      { "first-contentful-paint": 1100 },
+      { "first-contentful-paint": 900 },
+    ]);
+    // avg = 1000, current 700 is an improvement
+    const metrics = makeMetrics({ "first-contentful-paint": 700 });
+    const result = detectRegressions(metrics, entry, 10);
+    expect(result).toEqual([]);
+  });
+
+  it("only flags the regressed metric when others are fine", () => {
+    // Realistic multi-metric history with natural variation
+    const entry = makeEntry([
+      { "first-contentful-paint": 980, "total-blocking-time": 95, "cumulative-layout-shift": 0.04 },
+      { "first-contentful-paint": 1020, "total-blocking-time": 105, "cumulative-layout-shift": 0.06 },
+      { "first-contentful-paint": 1000, "total-blocking-time": 100, "cumulative-layout-shift": 0.05 },
+    ]);
+    // FCP avg=1000, current 1300 → 30% regression
+    // TBT avg=100, current 105 → 5%, within threshold
+    // CLS avg=0.05, current 0.052 → 4%, within threshold
+    const metrics = makeMetrics({
+      "first-contentful-paint": 1300,
+      "total-blocking-time": 105,
+      "cumulative-layout-shift": 0.052,
+    });
+    const result = detectRegressions(metrics, entry, 10);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metric).toBe("first-contentful-paint");
+  });
+
+  it("detects multiple regressions across different metrics simultaneously", () => {
+    const entry = makeEntry([
+      { "first-contentful-paint": 950, "total-blocking-time": 90 },
+      { "first-contentful-paint": 1050, "total-blocking-time": 110 },
+    ]);
+    // FCP avg=1000, current 1500 → 50%
+    // TBT avg=100, current 200 → 100%
+    const metrics = makeMetrics({
+      "first-contentful-paint": 1500,
+      "total-blocking-time": 200,
+    });
+    const result = detectRegressions(metrics, entry, 10);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.metric)).toContain("first-contentful-paint");
+    expect(result.map((r) => r.metric)).toContain("total-blocking-time");
+  });
+
+  it("CLS regression works with small fractional numbers", () => {
+    const entry = makeEntry([
+      { "cumulative-layout-shift": 0.04 },
+      { "cumulative-layout-shift": 0.06 },
+    ]);
+    // avg = 0.05, current 0.07 is 40% above → regression
     const metrics = makeMetrics({ "cumulative-layout-shift": 0.07 });
     const result = detectRegressions(metrics, entry, 10);
 
@@ -89,43 +150,44 @@ describe("detectRegressions", () => {
     expect(result[0].metric).toBe("cumulative-layout-shift");
   });
 
-  it("skips metrics that are undefined in current run", () => {
+  it("window limits comparison to recent runs only", () => {
+    // Site was slow (2000ms) for 8 runs, then improved to ~1000ms
+    const runs = [
+      ...Array(8).fill({ "first-contentful-paint": 2000 }),
+      { "first-contentful-paint": 950 },
+      { "first-contentful-paint": 1050 },
+    ];
+    const entry = makeEntry(runs);
+    // windowSize=2 → avg of last 2 = 1000
+    // current 1050 is only 5% above → no regression at 10%
+    // Without windowing, avg would be ~1800, and 1050 would look like an improvement
+    const metrics = makeMetrics({ "first-contentful-paint": 1050 });
+    const result = detectRegressions(metrics, entry, 10, 2);
+    expect(result).toEqual([]);
+  });
+
+  it("skips metrics missing from current run", () => {
     const entry = makeEntry([
       { "first-contentful-paint": 1000, "speed-index": 1500 },
       { "first-contentful-paint": 1000, "speed-index": 1500 },
     ]);
     const metrics = makeMetrics({ "speed-index": undefined });
     const result = detectRegressions(metrics, entry, 10);
-    // speed-index should not appear since current is undefined
     expect(result.find((r) => r.metric === "speed-index")).toBeUndefined();
   });
 
-  it("skips metrics with no history values", () => {
+  it("skips metrics with no history data", () => {
     const entry = makeEntry([
       { "first-contentful-paint": 1000 },
       { "first-contentful-paint": 1000 },
     ]);
-    // speed-index has no history data → avg is null → skip
+    // speed-index exists in current but has zero history → can't compute avg
     const metrics = makeMetrics({ "speed-index": 5000 });
     const result = detectRegressions(metrics, entry, 10);
     expect(result.find((r) => r.metric === "speed-index")).toBeUndefined();
   });
 
-  it("uses only the last windowSize runs for average", () => {
-    // 8 old runs at 1000, 2 recent runs at 2000
-    const runs = [
-      ...Array(8).fill({ "first-contentful-paint": 1000 }),
-      { "first-contentful-paint": 2000 },
-      { "first-contentful-paint": 2000 },
-    ];
-    const entry = makeEntry(runs);
-    // windowSize=2 → avg is 2000, current 2100 is only 5% above → no regression at 10%
-    const metrics = makeMetrics({ "first-contentful-paint": 2100 });
-    const result = detectRegressions(metrics, entry, 10, 2);
-    expect(result).toEqual([]);
-  });
-
-  it("handles zero average without producing Infinity", () => {
+  it("handles zero historical average without producing Infinity", () => {
     const entry = makeEntry([
       { "cumulative-layout-shift": 0 },
       { "cumulative-layout-shift": 0 },
@@ -140,29 +202,13 @@ describe("detectRegressions", () => {
     expect(result[0].percentChange).not.toContain("Infinity");
   });
 
-  it("does not regress when both avg and current are zero", () => {
+  it("zero current and zero avg is not a regression", () => {
     const entry = makeEntry([
       { "cumulative-layout-shift": 0 },
       { "cumulative-layout-shift": 0 },
     ]);
     const metrics = makeMetrics({ "cumulative-layout-shift": 0 });
     const result = detectRegressions(metrics, entry, 10);
-
     expect(result.find((r) => r.metric === "cumulative-layout-shift")).toBeUndefined();
-  });
-
-  it("detects multiple regressions across different metrics", () => {
-    const entry = makeEntry([
-      { "first-contentful-paint": 1000, "total-blocking-time": 100 },
-      { "first-contentful-paint": 1000, "total-blocking-time": 100 },
-    ]);
-    const metrics = makeMetrics({
-      "first-contentful-paint": 1500,
-      "total-blocking-time": 200,
-    });
-    const result = detectRegressions(metrics, entry, 10);
-    expect(result).toHaveLength(2);
-    expect(result.map((r) => r.metric)).toContain("first-contentful-paint");
-    expect(result.map((r) => r.metric)).toContain("total-blocking-time");
   });
 });
