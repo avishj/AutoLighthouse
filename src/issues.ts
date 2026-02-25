@@ -163,7 +163,7 @@ export async function findOpenIssue(octokit: Octokit): Promise<number | null> {
       per_page: 50,
     });
 
-    const match = issues.find((i) => i.title.includes(ISSUE_TITLE));
+    const match = issues.find((i: { title: string }) => i.title.includes(ISSUE_TITLE));
     return match?.number ?? null;
   } catch {
     return null;
