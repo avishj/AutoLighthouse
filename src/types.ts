@@ -78,6 +78,7 @@ export interface ReportConfig {
   historyPath: string;
   cleanupStalePaths: boolean;
   stalePathDays: number;
+  maxHistoryRuns: number;
   githubToken: string;
 }
 

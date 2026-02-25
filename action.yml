@@ -64,6 +64,10 @@ inputs:
     description: Days to wait before removing stale history entries (requires cleanup-stale-paths to be true).
     required: false
     default: "30"
+  max-history-runs:
+    description: Maximum number of history runs to keep per URL/profile combination.
+    required: false
+    default: "100"
   github-token:
     description: GitHub token for issue management and history commits.
     required: false
@@ -165,4 +169,5 @@ runs:
         INPUT_HISTORY_PATH: ${{ inputs.history-path }}
         INPUT_CLEANUP_STALE_PATHS: ${{ inputs.cleanup-stale-paths }}
         INPUT_STALE_PATH_DAYS: ${{ inputs.stale-path-days }}
+        INPUT_MAX_HISTORY_RUNS: ${{ inputs.max-history-runs }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
