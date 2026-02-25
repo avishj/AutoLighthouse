@@ -3973,11 +3973,11 @@ var require_util2 = __commonJS({
     var { isUint8Array } = require("node:util/types");
     var { webidl } = require_webidl();
     var supportedHashes = [];
-    var crypto;
+    var crypto2;
     try {
-      crypto = require("node:crypto");
+      crypto2 = require("node:crypto");
       const possibleRelevantHashes = ["sha256", "sha384", "sha512"];
-      supportedHashes = crypto.getHashes().filter((hash) => possibleRelevantHashes.includes(hash));
+      supportedHashes = crypto2.getHashes().filter((hash) => possibleRelevantHashes.includes(hash));
     } catch {
     }
     function responseURL(response) {
@@ -4250,7 +4250,7 @@ var require_util2 = __commonJS({
       }
     }
     function bytesMatch(bytes, metadataList) {
-      if (crypto === void 0) {
+      if (crypto2 === void 0) {
         return true;
       }
       const parsedMetadata = parseMetadata(metadataList);
@@ -4265,7 +4265,7 @@ var require_util2 = __commonJS({
       for (const item of metadata) {
         const algorithm = item.algo;
         const expectedValue = item.hash;
-        let actualValue = crypto.createHash(algorithm).update(bytes).digest("base64");
+        let actualValue = crypto2.createHash(algorithm).update(bytes).digest("base64");
         if (actualValue[actualValue.length - 1] === "=") {
           if (actualValue[actualValue.length - 2] === "=") {
             actualValue = actualValue.slice(0, -2);
@@ -5329,8 +5329,8 @@ var require_body = __commonJS({
     var { multipartFormDataParser } = require_formdata_parser();
     var random;
     try {
-      const crypto = require("node:crypto");
-      random = (max) => crypto.randomInt(0, max);
+      const crypto2 = require("node:crypto");
+      random = (max) => crypto2.randomInt(0, max);
     } catch {
       random = (max) => Math.floor(Math.random(max));
     }
@@ -16734,13 +16734,13 @@ var require_frame = __commonJS({
     "use strict";
     var { maxUnsigned16Bit } = require_constants5();
     var BUFFER_SIZE = 16386;
-    var crypto;
+    var crypto2;
     var buffer = null;
     var bufIdx = BUFFER_SIZE;
     try {
-      crypto = require("node:crypto");
+      crypto2 = require("node:crypto");
     } catch {
-      crypto = {
+      crypto2 = {
         // not full compatibility, but minimum.
         randomFillSync: function randomFillSync(buffer2, _offset, _size) {
           for (let i = 0; i < buffer2.length; ++i) {
@@ -16753,7 +16753,7 @@ var require_frame = __commonJS({
     function generateMask() {
       if (bufIdx === BUFFER_SIZE) {
         bufIdx = 0;
-        crypto.randomFillSync(buffer ??= Buffer.allocUnsafe(BUFFER_SIZE), 0, BUFFER_SIZE);
+        crypto2.randomFillSync(buffer ??= Buffer.allocUnsafe(BUFFER_SIZE), 0, BUFFER_SIZE);
       }
       return [buffer[bufIdx++], buffer[bufIdx++], buffer[bufIdx++], buffer[bufIdx++]];
     }
@@ -16825,9 +16825,9 @@ var require_connection = __commonJS({
     var { Headers: Headers2, getHeadersList } = require_headers();
     var { getDecodeSplit } = require_util2();
     var { WebsocketFrameSend } = require_frame();
-    var crypto;
+    var crypto2;
     try {
-      crypto = require("node:crypto");
+      crypto2 = require("node:crypto");
     } catch {
     }
     function establishWebSocketConnection(url, protocols, client, ws, onEstablish, options) {
@@ -16847,7 +16847,7 @@ var require_connection = __commonJS({
         const headersList = getHeadersList(new Headers2(options.headers));
         request.headersList = headersList;
       }
-      const keyValue = crypto.randomBytes(16).toString("base64");
+      const keyValue = crypto2.randomBytes(16).toString("base64");
       request.headersList.append("sec-websocket-key", keyValue);
       request.headersList.append("sec-websocket-version", "13");
       for (const protocol of protocols) {
@@ -16877,7 +16877,7 @@ var require_connection = __commonJS({
             return;
           }
           const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
-          const digest = crypto.createHash("sha1").update(keyValue + uid).digest("base64");
+          const digest = crypto2.createHash("sha1").update(keyValue + uid).digest("base64");
           if (secWSAccept !== digest) {
             failWebsocketConnection(ws, "Incorrect hash received in Sec-WebSocket-Accept header.");
             return;
@@ -18583,8 +18583,36 @@ function escapeProperty(s) {
   return toCommandValue(s).replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/:/g, "%3A").replace(/,/g, "%2C");
 }
 
+// node_modules/@actions/core/lib/file-command.js
+var crypto = __toESM(require("crypto"), 1);
+var fs = __toESM(require("fs"), 1);
+var os2 = __toESM(require("os"), 1);
+function issueFileCommand(command, message) {
+  const filePath = process.env[`GITHUB_${command}`];
+  if (!filePath) {
+    throw new Error(`Unable to find environment variable for file command ${command}`);
+  }
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Missing file at path: ${filePath}`);
+  }
+  fs.appendFileSync(filePath, `${toCommandValue(message)}${os2.EOL}`, {
+    encoding: "utf8"
+  });
+}
+function prepareKeyValueMessage(key, value) {
+  const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
+  const convertedValue = toCommandValue(value);
+  if (key.includes(delimiter)) {
+    throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+  }
+  if (convertedValue.includes(delimiter)) {
+    throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+  }
+  return `${key}<<${delimiter}${os2.EOL}${convertedValue}${os2.EOL}${delimiter}`;
+}
+
 // node_modules/@actions/core/lib/core.js
-var os3 = __toESM(require("os"), 1);
+var os4 = __toESM(require("os"), 1);
 
 // node_modules/@actions/http-client/lib/index.js
 var tunnel = __toESM(require_tunnel2(), 1);
@@ -18929,10 +18957,10 @@ var _summary = new Summary();
 var import_os2 = __toESM(require("os"), 1);
 
 // node_modules/@actions/io/lib/io-util.js
-var fs = __toESM(require("fs"), 1);
-var { chmod, copyFile, lstat, mkdir, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs.promises;
+var fs2 = __toESM(require("fs"), 1);
+var { chmod, copyFile, lstat, mkdir, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs2.promises;
 var IS_WINDOWS = process.platform === "win32";
-var READONLY = fs.constants.O_RDONLY;
+var READONLY = fs2.constants.O_RDONLY;
 
 // node_modules/@actions/exec/lib/toolrunner.js
 var IS_WINDOWS2 = process.platform === "win32";
@@ -18947,6 +18975,14 @@ var ExitCode;
   ExitCode2[ExitCode2["Success"] = 0] = "Success";
   ExitCode2[ExitCode2["Failure"] = 1] = "Failure";
 })(ExitCode || (ExitCode = {}));
+function setOutput(name, value) {
+  const filePath = process.env["GITHUB_OUTPUT"] || "";
+  if (filePath) {
+    return issueFileCommand("OUTPUT", prepareKeyValueMessage(name, value));
+  }
+  process.stdout.write(os4.EOL);
+  issueCommand("set-output", { name }, toCommandValue(value));
+}
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
@@ -18955,13 +18991,571 @@ function error(message, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 function info(message) {
-  process.stdout.write(message + os3.EOL);
+  process.stdout.write(message + os4.EOL);
 }
 
 // src/audit.ts
+var import_node_fs = require("node:fs");
+var import_node_path = require("node:path");
+var import_node_os = require("node:os");
+
+// src/presets/strict-mobile.json
+var strict_mobile_default = {
+  ci: {
+    collect: {
+      settings: {}
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:all",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.8 }],
+            "categories:accessibility": ["warn", { minScore: 0.95 }],
+            "categories:best-practices": ["warn", { minScore: 0.95 }],
+            "categories:seo": ["warn", { minScore: 0.95 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 3e3 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 4e3 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.1 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 400 }],
+            "speed-index": ["warn", { maxNumericValue: 5e3 }],
+            interactive: ["warn", { maxNumericValue: 5e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.6 }],
+            "categories:accessibility": ["error", { minScore: 0.9 }],
+            "categories:best-practices": ["error", { minScore: 0.9 }],
+            "categories:seo": ["error", { minScore: 0.9 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 5e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 6e3 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.25 }],
+            "total-blocking-time": ["error", { maxNumericValue: 800 }],
+            "speed-index": ["error", { maxNumericValue: 8e3 }],
+            interactive: ["error", { maxNumericValue: 8e3 }],
+            "performance-budget": "error"
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/strict-tablet.json
+var strict_tablet_default = {
+  ci: {
+    collect: {
+      settings: {
+        throttling: {
+          cpuSlowdownMultiplier: 2,
+          rttMs: 40,
+          throughputKbps: 10240
+        },
+        screenEmulation: {
+          mobile: true,
+          width: 768,
+          height: 1024,
+          deviceScaleFactor: 2
+        }
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:all",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.9 }],
+            "categories:accessibility": ["warn", { minScore: 0.95 }],
+            "categories:best-practices": ["warn", { minScore: 0.95 }],
+            "categories:seo": ["warn", { minScore: 0.95 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 2e3 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.08 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 250 }],
+            "speed-index": ["warn", { maxNumericValue: 4e3 }],
+            interactive: ["warn", { maxNumericValue: 3e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.75 }],
+            "categories:accessibility": ["error", { minScore: 0.9 }],
+            "categories:best-practices": ["error", { minScore: 0.9 }],
+            "categories:seo": ["error", { minScore: 0.9 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 3500 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 4e3 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.15 }],
+            "total-blocking-time": ["error", { maxNumericValue: 500 }],
+            "speed-index": ["error", { maxNumericValue: 6e3 }],
+            interactive: ["error", { maxNumericValue: 5e3 }],
+            "performance-budget": "error"
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/strict-desktop.json
+var strict_desktop_default = {
+  ci: {
+    collect: {
+      settings: {
+        preset: "desktop"
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:all",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.95 }],
+            "categories:accessibility": ["warn", { minScore: 0.95 }],
+            "categories:best-practices": ["warn", { minScore: 0.95 }],
+            "categories:seo": ["warn", { minScore: 0.95 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 1200 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 1800 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.08 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 150 }],
+            "speed-index": ["warn", { maxNumericValue: 3e3 }],
+            interactive: ["warn", { maxNumericValue: 2e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.85 }],
+            "categories:accessibility": ["error", { minScore: 0.9 }],
+            "categories:best-practices": ["error", { minScore: 0.9 }],
+            "categories:seo": ["error", { minScore: 0.9 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 2e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 3e3 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.15 }],
+            "total-blocking-time": ["error", { maxNumericValue: 300 }],
+            "speed-index": ["error", { maxNumericValue: 5e3 }],
+            interactive: ["error", { maxNumericValue: 3500 }],
+            "performance-budget": "error"
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/moderate-mobile.json
+var moderate_mobile_default = {
+  ci: {
+    collect: {
+      settings: {}
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.65 }],
+            "categories:accessibility": ["warn", { minScore: 0.9 }],
+            "categories:best-practices": ["warn", { minScore: 0.9 }],
+            "categories:seo": ["warn", { minScore: 0.9 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 4e3 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 5500 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.15 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 600 }],
+            "speed-index": ["warn", { maxNumericValue: 7e3 }],
+            interactive: ["warn", { maxNumericValue: 7e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.45 }],
+            "categories:accessibility": ["error", { minScore: 0.85 }],
+            "categories:best-practices": ["error", { minScore: 0.85 }],
+            "categories:seo": ["error", { minScore: 0.85 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 7e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 8e3 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.35 }],
+            "total-blocking-time": ["error", { maxNumericValue: 1200 }],
+            "speed-index": ["error", { maxNumericValue: 11e3 }],
+            interactive: ["error", { maxNumericValue: 11e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/moderate-tablet.json
+var moderate_tablet_default = {
+  ci: {
+    collect: {
+      settings: {
+        throttling: {
+          cpuSlowdownMultiplier: 2,
+          rttMs: 40,
+          throughputKbps: 10240
+        },
+        screenEmulation: {
+          mobile: true,
+          width: 768,
+          height: 1024,
+          deviceScaleFactor: 2
+        }
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.75 }],
+            "categories:accessibility": ["warn", { minScore: 0.9 }],
+            "categories:best-practices": ["warn", { minScore: 0.9 }],
+            "categories:seo": ["warn", { minScore: 0.9 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 2800 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 3500 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.12 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 400 }],
+            "speed-index": ["warn", { maxNumericValue: 5500 }],
+            interactive: ["warn", { maxNumericValue: 4500 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.55 }],
+            "categories:accessibility": ["error", { minScore: 0.85 }],
+            "categories:best-practices": ["error", { minScore: 0.85 }],
+            "categories:seo": ["error", { minScore: 0.85 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 5e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 5500 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.25 }],
+            "total-blocking-time": ["error", { maxNumericValue: 750 }],
+            "speed-index": ["error", { maxNumericValue: 8e3 }],
+            interactive: ["error", { maxNumericValue: 7e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/moderate-desktop.json
+var moderate_desktop_default = {
+  ci: {
+    collect: {
+      settings: {
+        preset: "desktop"
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.85 }],
+            "categories:accessibility": ["warn", { minScore: 0.9 }],
+            "categories:best-practices": ["warn", { minScore: 0.9 }],
+            "categories:seo": ["warn", { minScore: 0.9 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 1800 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.12 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 250 }],
+            "speed-index": ["warn", { maxNumericValue: 4500 }],
+            interactive: ["warn", { maxNumericValue: 3e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.7 }],
+            "categories:accessibility": ["error", { minScore: 0.85 }],
+            "categories:best-practices": ["error", { minScore: 0.85 }],
+            "categories:seo": ["error", { minScore: 0.85 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 3e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 4e3 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.2 }],
+            "total-blocking-time": ["error", { maxNumericValue: 500 }],
+            "speed-index": ["error", { maxNumericValue: 7e3 }],
+            interactive: ["error", { maxNumericValue: 5e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/relaxed-mobile.json
+var relaxed_mobile_default = {
+  ci: {
+    collect: {
+      settings: {}
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.5 }],
+            "categories:accessibility": ["warn", { minScore: 0.85 }],
+            "categories:best-practices": ["warn", { minScore: 0.85 }],
+            "categories:seo": ["warn", { minScore: 0.85 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 5500 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 7e3 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.2 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 900 }],
+            "speed-index": ["warn", { maxNumericValue: 9e3 }],
+            interactive: ["warn", { maxNumericValue: 9e3 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.3 }],
+            "categories:accessibility": ["error", { minScore: 0.8 }],
+            "categories:best-practices": ["error", { minScore: 0.8 }],
+            "categories:seo": ["error", { minScore: 0.8 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 9e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 1e4 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.4 }],
+            "total-blocking-time": ["error", { maxNumericValue: 1500 }],
+            "speed-index": ["error", { maxNumericValue: 14e3 }],
+            interactive: ["error", { maxNumericValue: 14e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/relaxed-tablet.json
+var relaxed_tablet_default = {
+  ci: {
+    collect: {
+      settings: {
+        throttling: {
+          cpuSlowdownMultiplier: 2,
+          rttMs: 40,
+          throughputKbps: 10240
+        },
+        screenEmulation: {
+          mobile: true,
+          width: 768,
+          height: 1024,
+          deviceScaleFactor: 2
+        }
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.6 }],
+            "categories:accessibility": ["warn", { minScore: 0.85 }],
+            "categories:best-practices": ["warn", { minScore: 0.85 }],
+            "categories:seo": ["warn", { minScore: 0.85 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 4e3 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 5e3 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.18 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 600 }],
+            "speed-index": ["warn", { maxNumericValue: 7500 }],
+            interactive: ["warn", { maxNumericValue: 6500 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.4 }],
+            "categories:accessibility": ["error", { minScore: 0.8 }],
+            "categories:best-practices": ["error", { minScore: 0.8 }],
+            "categories:seo": ["error", { minScore: 0.8 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 7e3 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 7500 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.3 }],
+            "total-blocking-time": ["error", { maxNumericValue: 1e3 }],
+            "speed-index": ["error", { maxNumericValue: 1e4 }],
+            interactive: ["error", { maxNumericValue: 9e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/relaxed-desktop.json
+var relaxed_desktop_default = {
+  ci: {
+    collect: {
+      settings: {
+        preset: "desktop"
+      }
+    },
+    assert: {
+      includePassedAssertions: false,
+      assertMatrix: [
+        {
+          matchingUrlPattern: ".*",
+          preset: "lighthouse:recommended",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["warn", { minScore: 0.7 }],
+            "categories:accessibility": ["warn", { minScore: 0.85 }],
+            "categories:best-practices": ["warn", { minScore: 0.85 }],
+            "categories:seo": ["warn", { minScore: 0.85 }],
+            "first-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+            "largest-contentful-paint": ["warn", { maxNumericValue: 3500 }],
+            "cumulative-layout-shift": ["warn", { maxNumericValue: 0.15 }],
+            "total-blocking-time": ["warn", { maxNumericValue: 400 }],
+            "speed-index": ["warn", { maxNumericValue: 6e3 }],
+            interactive: ["warn", { maxNumericValue: 4500 }],
+            "network-dependency-tree-insight": "off",
+            "render-blocking-insight": "off",
+            "render-blocking-resources": "off"
+          }
+        },
+        {
+          matchingUrlPattern: ".*",
+          aggregationMethod: "median",
+          assertions: {
+            "categories:performance": ["error", { minScore: 0.5 }],
+            "categories:accessibility": ["error", { minScore: 0.8 }],
+            "categories:best-practices": ["error", { minScore: 0.8 }],
+            "categories:seo": ["error", { minScore: 0.8 }],
+            "first-contentful-paint": ["error", { maxNumericValue: 4500 }],
+            "largest-contentful-paint": ["error", { maxNumericValue: 5500 }],
+            "cumulative-layout-shift": ["error", { maxNumericValue: 0.25 }],
+            "total-blocking-time": ["error", { maxNumericValue: 700 }],
+            "speed-index": ["error", { maxNumericValue: 9e3 }],
+            interactive: ["error", { maxNumericValue: 7e3 }]
+          }
+        }
+      ]
+    }
+  }
+};
+
+// src/presets/budget.json
+var budget_default = [
+  {
+    path: "/*",
+    resourceSizes: [
+      { resourceType: "total", budget: 700 },
+      { resourceType: "script", budget: 350 },
+      { resourceType: "stylesheet", budget: 100 },
+      { resourceType: "font", budget: 120 },
+      { resourceType: "image", budget: 100 },
+      { resourceType: "document", budget: 30 }
+    ],
+    resourceCounts: [
+      { resourceType: "total", budget: 30 },
+      { resourceType: "script", budget: 10 },
+      { resourceType: "font", budget: 4 },
+      { resourceType: "third-party", budget: 8 }
+    ]
+  }
+];
+
+// src/audit.ts
+var presets = {
+  "strict-mobile": strict_mobile_default,
+  "strict-tablet": strict_tablet_default,
+  "strict-desktop": strict_desktop_default,
+  "moderate-mobile": moderate_mobile_default,
+  "moderate-tablet": moderate_tablet_default,
+  "moderate-desktop": moderate_desktop_default,
+  "relaxed-mobile": relaxed_mobile_default,
+  "relaxed-tablet": relaxed_tablet_default,
+  "relaxed-desktop": relaxed_desktop_default
+};
 async function run() {
   try {
-    info("AutoLighthouse audit starting...");
+    const profile = process.env.INPUT_PROFILE || "mobile";
+    const preset = process.env.INPUT_PRESET || "strict";
+    const budgets = process.env.INPUT_BUDGETS || "true";
+    const key = `${preset}-${profile}`;
+    const config = presets[key];
+    if (!config) {
+      throw new Error(
+        `Unknown preset/profile combination: ${preset}/${profile}. Valid presets: strict, moderate, relaxed. Valid profiles: mobile, tablet, desktop.`
+      );
+    }
+    const tmp = (0, import_node_os.tmpdir)();
+    const configPath = (0, import_node_path.join)(tmp, "lighthouserc.json");
+    (0, import_node_fs.writeFileSync)(configPath, JSON.stringify(config, null, 2));
+    setOutput("config-path", configPath);
+    info(`Generated lighthouserc at ${configPath} (preset: ${preset}, profile: ${profile})`);
+    if (budgets === "false") {
+      setOutput("budget-path", "");
+      info("Budgets disabled");
+    } else if (budgets === "true") {
+      const budgetPath = (0, import_node_path.join)(tmp, "budget.json");
+      (0, import_node_fs.writeFileSync)(budgetPath, JSON.stringify(budget_default, null, 2));
+      setOutput("budget-path", budgetPath);
+      info(`Generated budget at ${budgetPath}`);
+    } else {
+      setOutput("budget-path", budgets);
+      info(`Using custom budget: ${budgets}`);
+    }
   } catch (error2) {
     if (error2 instanceof Error) {
       setFailed(error2.message);
