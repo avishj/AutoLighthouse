@@ -18958,10 +18958,10 @@ function info(message) {
   process.stdout.write(message + os3.EOL);
 }
 
-// src/generate-config.ts
+// src/audit.ts
 async function run() {
   try {
-    info("Generating Lighthouse config...");
+    info("AutoLighthouse audit starting...");
   } catch (error2) {
     if (error2 instanceof Error) {
       setFailed(error2.message);
@@ -18977,4 +18977,4 @@ undici/lib/web/fetch/body.js:
 undici/lib/web/websocket/frame.js:
   (*! ws. MIT License. Einar Otto Stangvik <einaros@gmail.com> *)
 */
-//# sourceMappingURL=generate-config.js.map
+//# sourceMappingURL=audit.js.map
