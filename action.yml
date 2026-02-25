@@ -10,8 +10,8 @@ inputs:
     required: false
     default: audit
   urls:
-    description: Newline-separated list of URLs to audit.
-    required: true
+    description: Newline-separated list of URLs to audit. Required for audit mode.
+    required: false
   profile:
     description: Device profile for this run (mobile, tablet, or desktop).
     required: false
@@ -75,6 +75,14 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Run AutoLighthouse
+    - name: Validate inputs
       shell: bash
-      run: echo "TODO"
+      run: |
+        if [[ "${{ inputs.mode }}" != "audit" && "${{ inputs.mode }}" != "report" ]]; then
+          echo "::error::Invalid mode '${{ inputs.mode }}'. Must be 'audit' or 'report'."
+          exit 1
+        fi
+        if [[ "${{ inputs.mode }}" == "audit" && -z "${{ inputs.urls }}" ]]; then
+          echo "::error::The 'urls' input is required for audit mode."
+          exit 1
+        fi
