@@ -96,6 +96,61 @@ export function buildIssueBody(
   return body;
 }
 
+/** Create, comment on, or close the Lighthouse Performance Alert issue. */
+export async function manageIssue(
+  octokit: Octokit,
+  analysis: AnalysisResult,
+  consecutiveFailLimit: number,
+): Promise<void> {
+  const existingIssue = await findOpenIssue(octokit);
+
+  if (!analysis.passed) {
+    const body = buildIssueBody(analysis, consecutiveFailLimit);
+
+    if (existingIssue) {
+      await commentOnIssue(octokit, existingIssue, body);
+    } else {
+      await createIssue(octokit, body);
+    }
+  } else if (existingIssue) {
+    await commentOnIssue(octokit, existingIssue, "✅ All clear — no regressions or assertion failures.");
+    await closeIssue(octokit, existingIssue);
+  }
+}
+
+async function createIssue(octokit: Octokit, body: string): Promise<void> {
+  const { owner, repo } = getRepo();
+  const labels = await ensureLabels(octokit);
+
+  await octokit.rest.issues.create({
+    owner,
+    repo,
+    title: ISSUE_TITLE,
+    body,
+    labels,
+  });
+}
+
+async function commentOnIssue(octokit: Octokit, issueNumber: number, body: string): Promise<void> {
+  const { owner, repo } = getRepo();
+  await octokit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body,
+  });
+}
+
+async function closeIssue(octokit: Octokit, issueNumber: number): Promise<void> {
+  const { owner, repo } = getRepo();
+  await octokit.rest.issues.update({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    state: "closed",
+  });
+}
+
 /** Find an open issue with matching title and label. Returns issue number or null. */
 export async function findOpenIssue(octokit: Octokit): Promise<number | null> {
   try {
