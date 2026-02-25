@@ -68,6 +68,19 @@ export interface AnalysisResult {
   passed: boolean;
 }
 
+/** Parsed action inputs for report mode. */
+export interface ReportConfig {
+  resultsPath: string;
+  regressionThreshold: number;
+  consecutiveFailLimit: number;
+  failOn: "error" | "warn" | "never";
+  createIssues: boolean;
+  historyPath: string;
+  cleanupStalePaths: boolean;
+  stalePathDays: number;
+  githubToken: string;
+}
+
 /** Assertion result from treosh/lighthouse-ci-action. */
 export interface AssertionResult {
   auditId: string;
