@@ -86,3 +86,50 @@ runs:
           echo "::error::The 'urls' input is required for audit mode."
           exit 1
         fi
+
+    # ── Audit mode ──────────────────────────────────────────────
+
+    - name: Generate Lighthouse config
+      if: inputs.mode == 'audit'
+      id: config
+      shell: bash
+      run: node "${{ github.action_path }}/dist/audit.js"
+      env:
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_PRESET: ${{ inputs.preset }}
+        INPUT_URLS: ${{ inputs.urls }}
+        INPUT_RUNS: ${{ inputs.runs }}
+        INPUT_BUDGETS: ${{ inputs.budgets }}
+
+    - name: Run Lighthouse
+      if: inputs.mode == 'audit'
+      id: lighthouse
+      uses: treosh/lighthouse-ci-action@v12
+      with:
+        urls: ${{ inputs.urls }}
+        configPath: ${{ steps.config.outputs.config-path }}
+        budgetPath: ${{ steps.config.outputs.budget-path }}
+        uploadArtifacts: false
+        temporaryPublicStorage: ${{ inputs.temporary-public-storage }}
+        runs: ${{ inputs.runs }}
+
+    - name: Save audit metadata
+      if: inputs.mode == 'audit'
+      shell: bash
+      env:
+        RESULTS_PATH: ${{ steps.lighthouse.outputs.resultsPath }}
+        ASSERTIONS: ${{ steps.lighthouse.outputs.assertionResults }}
+        LINKS: ${{ steps.lighthouse.outputs.links }}
+        PROFILE: ${{ inputs.profile }}
+      run: |
+        echo "$ASSERTIONS" > "$RESULTS_PATH/assertion-results.json"
+        echo "$LINKS" > "$RESULTS_PATH/links.json"
+        echo "$PROFILE" > "$RESULTS_PATH/profile.txt"
+
+    - name: Upload audit results
+      if: inputs.mode == 'audit'
+      uses: actions/upload-artifact@v4
+      with:
+        name: autolighthouse-${{ inputs.profile }}
+        path: ${{ steps.lighthouse.outputs.resultsPath }}
+        retention-days: 7
