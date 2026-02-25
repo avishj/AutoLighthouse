@@ -27,3 +27,22 @@ export function saveHistory(historyPath: string, history: History, maxRunsPerKey
   mkdirSync(dirname(historyPath), { recursive: true });
   writeFileSync(historyPath, JSON.stringify(history, null, 2));
 }
+
+/** Remove history entries not seen in `activeKeys` and older than `staleDays`. */
+export function cleanupStalePaths(history: History, activeKeys: Set<string>, staleDays: number): string[] {
+  const cutoff = Date.now() - staleDays * 24 * 60 * 60 * 1000;
+  const removed: string[] = [];
+
+  for (const key of Object.keys(history.paths)) {
+    if (activeKeys.has(key)) continue;
+
+    const entry = history.paths[key];
+    const lastSeen = new Date(entry.lastSeen).getTime();
+    if (isNaN(lastSeen) || lastSeen < cutoff) {
+      delete history.paths[key];
+      removed.push(key);
+    }
+  }
+
+  return removed;
+}
