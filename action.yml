@@ -132,4 +132,27 @@ runs:
       with:
         name: autolighthouse-${{ inputs.profile }}
         path: ${{ steps.lighthouse.outputs.resultsPath }}
-        retention-days: 7
+        retention-days: 90
+
+    # ── Report mode ─────────────────────────────────────────────
+
+    - name: Download audit results
+      if: inputs.mode == 'report'
+      uses: actions/download-artifact@v4
+      with:
+        pattern: autolighthouse-*
+        path: .autolighthouse-results
+
+    - name: Analyze results
+      if: inputs.mode == 'report'
+      id: analyze
+      shell: bash
+      run: node "${{ github.action_path }}/dist/report.js"
+      env:
+        INPUT_RESULTS_PATH: .autolighthouse-results
+        INPUT_REGRESSION_THRESHOLD: ${{ inputs.regression-threshold }}
+        INPUT_CONSECUTIVE_FAIL_LIMIT: ${{ inputs.consecutive-fail-limit }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_CREATE_ISSUES: ${{ inputs.create-issues }}
+        INPUT_HISTORY_PATH: ${{ inputs.history-path }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
