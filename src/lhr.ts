@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Profile, AssertionResult } from "./types";
+import type { Profile, AssertionResult, Metrics } from "./types";
+import { METRIC_KEYS } from "./types";
 
 /** Metadata and LHR file paths for a single profile's audit results. */
 export interface ProfileArtifact {
@@ -55,6 +56,30 @@ function readAssertions(dir: string): AssertionResult[] {
     return Array.isArray(data) ? data : [];
   } catch {
     return [];
+  }
+}
+
+/** Extract the 6 core metrics from a Lighthouse Result JSON object. */
+export function extractMetrics(lhr: Record<string, unknown>): Metrics {
+  const audits = (lhr.audits ?? {}) as Record<string, { numericValue?: number }>;
+  const metrics = {} as Metrics;
+  for (const key of METRIC_KEYS) {
+    metrics[key] = audits[key]?.numericValue;
+  }
+  return metrics;
+}
+
+/** Extract the requested URL from an LHR object. */
+export function extractUrl(lhr: Record<string, unknown>): string {
+  return (lhr.requestedUrl as string) || (lhr.finalUrl as string) || "";
+}
+
+/** Parse an LHR JSON file. Returns null on failure. */
+export function parseLhr(path: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return null;
   }
 }
 
