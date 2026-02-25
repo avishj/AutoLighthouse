@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Maximalist Lighthouse CI system for GitHub Actions",
   "scripts": {
-    "build": "esbuild src/audit.ts src/report.ts --bundle --platform=node --target=node24 --outdir=dist --sourcemap"
+    "build": "esbuild src/audit.ts src/report.ts --bundle --platform=node --target=node24 --outdir=dist --sourcemap",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@types/node": "^25.3.0",
     "esbuild": "^0.27.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
