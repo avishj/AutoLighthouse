@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join, resolve, isAbsolute } from "node:path";
+import { join, resolve, isAbsolute, relative } from "node:path";
 import type { Profile, AssertionResult, Metrics } from "./types";
 import { METRIC_KEYS } from "./types";
 
@@ -21,7 +21,8 @@ export function validateResultsPath(resultsPath: string, workspace: string): str
   const resolved = resolve(workspace, resultsPath);
   const workspaceResolved = resolve(workspace);
   
-  if (!resolved.startsWith(workspaceResolved)) return null;
+  const rel = relative(workspaceResolved, resolved);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) return null;
   if (!existsSync(resolved)) return null;
   
   return resolved;
