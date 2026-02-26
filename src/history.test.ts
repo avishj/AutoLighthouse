@@ -3,7 +3,17 @@ import { loadHistory, saveHistory, cleanupStalePaths } from "./history";
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { History } from "./types";
+import type { History, Metrics } from "./types";
+
+const makeMetrics = (overrides: Partial<Metrics> = {}): Metrics => ({
+  "first-contentful-paint": 1000,
+  "largest-contentful-paint": 2000,
+  "cumulative-layout-shift": 0.1,
+  "total-blocking-time": 300,
+  "speed-index": 4000,
+  "interactive": 5000,
+  ...overrides,
+});
 
 let testDir: string;
 
@@ -43,7 +53,7 @@ describe("loadHistory", () => {
         "mobile:/": {
           consecutiveFailures: 2,
           lastSeen: "2025-01-01T00:00:00.000Z",
-          runs: [{ metrics: { "first-contentful-paint": 1000 }, timestamp: "2025-01-01T00:00:00.000Z" }],
+          runs: [{ metrics: makeMetrics({ "first-contentful-paint": 1000 }), timestamp: "2025-01-01T00:00:00.000Z" }],
         },
       },
     };
@@ -64,7 +74,7 @@ describe("saveHistory", () => {
         "mobile:/": {
           consecutiveFailures: 0,
           lastSeen: "",
-          runs: [{ metrics: { "first-contentful-paint": 500 }, timestamp: "" }],
+          runs: [{ metrics: makeMetrics({ "first-contentful-paint": 500 }), timestamp: "" }],
         },
       },
     };
@@ -81,7 +91,7 @@ describe("saveHistory", () => {
   it("trims runs to maxRunsPerKey", () => {
     const path = join(testDir, "history.json");
     const runs = Array.from({ length: 10 }, (_, i) => ({
-      metrics: { "first-contentful-paint": 1000 + i },
+      metrics: makeMetrics({ "first-contentful-paint": 1000 + i }),
       timestamp: new Date(2025, 0, i + 1).toISOString(),
     }));
 

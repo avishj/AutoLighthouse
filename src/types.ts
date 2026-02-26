@@ -3,7 +3,7 @@ export type Profile = "mobile" | "tablet" | "desktop";
 /** History JSON schema (stored at history-path) */
 
 export interface HistoryRun {
-  metrics: Record<string, number | undefined>;
+  metrics: Metrics;
   timestamp: string;
 }
 
