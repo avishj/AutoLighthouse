@@ -1,6 +1,6 @@
 import * as github from "@actions/github";
 import type { AnalysisResult } from "./types";
-import { fmt, filterFailedAssertions, countAssertionLevels, buildAssertionTable, buildRegressionsList } from "./utils";
+import { filterFailedAssertions, countAssertionLevels, buildAssertionTable, buildRegressionsList } from "./utils";
 
 const ISSUE_TITLE = "Lighthouse Performance Alert";
 const LABELS = ["lighthouse", "performance"];
