@@ -23572,27 +23572,40 @@ function getOctokit(token, options, ...additionalPlugins) {
 }
 
 // src/config.ts
+var DEFAULT_REGRESSION_THRESHOLD = 10;
+var DEFAULT_CONSECUTIVE_FAIL_LIMIT = 3;
+var DEFAULT_STALE_PATH_DAYS = 30;
+var DEFAULT_MAX_HISTORY_RUNS = 100;
 function parseConfig() {
   return {
     resultsPath: process.env.INPUT_RESULTS_PATH || ".autolighthouse-results",
-    regressionThreshold: parseIntOr(process.env.INPUT_REGRESSION_THRESHOLD, 10),
-    consecutiveFailLimit: parseIntOr(process.env.INPUT_CONSECUTIVE_FAIL_LIMIT, 3),
+    regressionThreshold: parseRegressionThreshold(process.env.INPUT_REGRESSION_THRESHOLD),
+    consecutiveFailLimit: parseConsecutiveFailLimit(process.env.INPUT_CONSECUTIVE_FAIL_LIMIT),
     failOn: parseFailOn(process.env.INPUT_FAIL_ON),
     createIssues: process.env.INPUT_CREATE_ISSUES !== "false",
     historyPath: process.env.INPUT_HISTORY_PATH || ".lighthouse/history.json",
     cleanupStalePaths: process.env.INPUT_CLEANUP_STALE_PATHS === "true",
-    stalePathDays: parseIntOr(process.env.INPUT_STALE_PATH_DAYS, 30),
-    maxHistoryRuns: parseIntOr(process.env.INPUT_MAX_HISTORY_RUNS, 100),
+    stalePathDays: parsePositiveInt(process.env.INPUT_STALE_PATH_DAYS, DEFAULT_STALE_PATH_DAYS),
+    maxHistoryRuns: parsePositiveInt(process.env.INPUT_MAX_HISTORY_RUNS, DEFAULT_MAX_HISTORY_RUNS),
     githubToken: process.env.INPUT_GITHUB_TOKEN || ""
   };
 }
-function parseIntOr(value, fallback) {
+function parseRegressionThreshold(value) {
+  const parsed = parsePositiveInt(value, DEFAULT_REGRESSION_THRESHOLD);
+  return Math.min(parsed, 100);
+}
+function parseConsecutiveFailLimit(value) {
+  return parsePositiveInt(value, DEFAULT_CONSECUTIVE_FAIL_LIMIT);
+}
+function parsePositiveInt(value, fallback) {
   if (!value) return fallback;
   const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? fallback : parsed;
+  if (isNaN(parsed) || parsed <= 0) return fallback;
+  return parsed;
 }
 function parseFailOn(value) {
   if (value === "warn" || value === "never") return value;
+  if (value === "error") return value;
   return "error";
 }
 
