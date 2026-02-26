@@ -1,9 +1,9 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { parseConfig } from "./config";
-import { discoverArtifacts, parseLhr, extractMetrics, extractUrl } from "./lhr";
+import { discoverArtifacts, parseLhr, extractMetrics, extractUrl, validateResultsPath } from "./lhr";
 import { detectRegressions } from "./regression";
-import { loadHistory, saveHistory, cleanupStalePaths } from "./history";
+import { loadHistory, saveHistory, cleanupStalePaths, validateHistoryPath } from "./history";
 import { manageIssue } from "./issues";
 import { buildSummary } from "./summary";
 import type {
@@ -19,14 +19,29 @@ import type {
 async function run(): Promise<void> {
   try {
     const config = parseConfig();
-    const artifacts = discoverArtifacts(config.resultsPath);
+    
+    const workspace = process.env.GITHUB_WORKSPACE || ".";
+    const safeResultsPath = validateResultsPath(config.resultsPath, workspace);
+    if (!safeResultsPath) {
+      core.setFailed("Invalid results path: path traversal detected or path does not exist.");
+      return;
+    }
+    
+    const artifacts = discoverArtifacts(safeResultsPath);
 
     if (artifacts.length === 0) {
       core.warning("No audit artifacts found — nothing to analyze.");
       return;
     }
 
-    const history = config.historyPath ? loadHistory(config.historyPath) : null;
+    const historyPath = config.historyPath 
+      ? validateHistoryPath(config.historyPath, workspace)
+      : null;
+    if (config.historyPath && !historyPath) {
+      core.warning("Invalid history path: path traversal detected. History disabled.");
+    }
+    
+    const history = historyPath ? loadHistory(historyPath) : null;
 
     // Collect raw per-profile×URL data
     const raw: Array<{
@@ -117,15 +132,15 @@ async function run(): Promise<void> {
     };
 
     // Save history
-    if (history && config.historyPath) {
+    if (history && historyPath) {
       if (config.cleanupStalePaths) {
         const removed = cleanupStalePaths(history, activeKeys, config.stalePathDays);
         if (removed.length > 0) {
           core.info(`Cleaned up ${removed.length} stale history path(s): ${removed.join(", ")}`);
         }
       }
-      saveHistory(config.historyPath, history, config.maxHistoryRuns);
-      core.info(`History saved to ${config.historyPath}`);
+      saveHistory(historyPath, history, config.maxHistoryRuns);
+      core.info(`History saved to ${historyPath}`);
     }
 
     // Issue management

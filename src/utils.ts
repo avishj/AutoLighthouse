@@ -1,7 +1,22 @@
+import { resolve } from "node:path";
 import type { AssertionResult, Regression } from "./types";
 
 export function fmt(value: number): string {
   return value < 10 ? value.toFixed(3) : value.toFixed(1);
+}
+
+export function validatePathTraversal(
+  userPath: string,
+  basePath: string,
+): string | null {
+  const resolved = resolve(basePath, userPath);
+  const resolvedBase = resolve(basePath);
+  
+  if (!resolved.startsWith(resolvedBase)) {
+    return null;
+  }
+  
+  return resolved;
 }
 
 export function filterFailedAssertions(assertions: AssertionResult[]): AssertionResult[] {

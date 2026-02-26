@@ -1,7 +1,25 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, isAbsolute } from "node:path";
 import type { Profile, AssertionResult, Metrics } from "./types";
 import { METRIC_KEYS } from "./types";
+
+export function isPathSafe(inputPath: string): boolean {
+  const normalized = inputPath.replace(/\\/g, "/");
+  if (normalized.includes("..") || normalized.startsWith("/")) return false;
+  return true;
+}
+
+export function validateResultsPath(resultsPath: string, workspace: string): string | null {
+  if (!isPathSafe(resultsPath)) return null;
+  
+  const resolved = resolve(workspace, resultsPath);
+  const workspaceResolved = resolve(workspace);
+  
+  if (!resolved.startsWith(workspaceResolved)) return null;
+  if (!existsSync(resolved)) return null;
+  
+  return resolved;
+}
 
 /** Metadata and LHR file paths for a single profile's audit results. */
 export interface ProfileArtifact {

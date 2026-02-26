@@ -1,8 +1,25 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { History } from "./types";
 
 const EMPTY_HISTORY: History = { version: 1, lastUpdated: "", paths: {} };
+
+export function isPathSafe(inputPath: string): boolean {
+  const normalized = inputPath.replace(/\\/g, "/");
+  if (normalized.includes("..") || normalized.startsWith("/")) return false;
+  return true;
+}
+
+export function validateHistoryPath(historyPath: string, workspace: string): string | null {
+  if (!isPathSafe(historyPath)) return null;
+  
+  const resolved = resolve(workspace, historyPath);
+  const workspaceResolved = resolve(workspace);
+  
+  if (!resolved.startsWith(workspaceResolved)) return null;
+  
+  return resolved;
+}
 
 /** Load history from disk. Returns empty history if file doesn't exist or is invalid. */
 export function loadHistory(historyPath: string): History {
