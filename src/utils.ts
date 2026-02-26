@@ -3,7 +3,8 @@ import type { AssertionResult, Regression } from "./types";
 
 export function isPathSafe(inputPath: string): boolean {
   const normalized = inputPath.replace(/\\/g, "/");
-  if (normalized.includes("..") || normalized.startsWith("/")) return false;
+  if (normalized.startsWith("/")) return false;
+  if (normalized.split("/").includes("..")) return false;
   return true;
 }
 
