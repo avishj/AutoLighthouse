@@ -23744,6 +23744,43 @@ function cleanupStalePaths(history, activeKeys, staleDays) {
   return removed;
 }
 
+// src/utils.ts
+function fmt(value) {
+  return value < 10 ? value.toFixed(3) : value.toFixed(1);
+}
+function filterFailedAssertions(assertions) {
+  return assertions.filter((a) => !a.passed);
+}
+function countAssertionLevels(assertions) {
+  const errors = assertions.filter((a) => a.level === "error").length;
+  const warnings = assertions.filter((a) => a.level === "warn").length;
+  return { errors, warnings };
+}
+function buildAssertionTable(assertions) {
+  if (assertions.length === 0) return "";
+  let md = `| Audit | Level | Actual | Threshold |
+`;
+  md += `|-------|-------|--------|----------|
+`;
+  for (const a of assertions) {
+    md += `| ${a.auditId} | ${a.level} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
+`;
+  }
+  md += "\n";
+  return md;
+}
+function buildRegressionsList(regressions) {
+  if (regressions.length === 0) return "";
+  let md = `**Regressions:**
+`;
+  for (const r of regressions) {
+    md += `- ${r.metric}: ${fmt(r.avg)} \u2192 ${fmt(r.current)} (${r.percentChange})
+`;
+  }
+  md += "\n";
+  return md;
+}
+
 // src/issues.ts
 var ISSUE_TITLE = "Lighthouse Performance Alert";
 var LABELS = ["lighthouse", "performance"];
@@ -23785,7 +23822,6 @@ function buildIssueBody(analysis, consecutiveFailLimit) {
   body += `**Commit:** ${commit}
 
 `;
-  const fmt = (v) => v < 10 ? v.toFixed(3) : v.toFixed(1);
   for (const url of analysis.urls) {
     if (url.passed) continue;
     body += `### ${url.pathname}
@@ -23801,31 +23837,16 @@ function buildIssueBody(analysis, consecutiveFailLimit) {
 
 `;
       }
-      const failures = pr.assertions.filter((a) => !a.passed);
+      const failures = filterFailedAssertions(pr.assertions);
       if (failures.length > 0) {
-        const errors = failures.filter((a) => a.level === "error").length;
-        const warns = failures.filter((a) => a.level === "warn").length;
-        body += `**Assertion Failures:** ${errors} error(s), ${warns} warning(s)
+        const { errors, warnings } = countAssertionLevels(failures);
+        body += `**Assertion Failures:** ${errors} error(s), ${warnings} warning(s)
 
 `;
-        body += `| Audit | Level | Actual | Threshold |
-`;
-        body += `|-------|-------|--------|----------|
-`;
-        for (const a of failures) {
-          body += `| ${a.auditId} | ${a.level} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
-`;
-        }
-        body += "\n";
+        body += buildAssertionTable(failures);
       }
       if (pr.regressions.length > 0) {
-        body += `**Regressions:**
-`;
-        for (const r of pr.regressions) {
-          body += `- ${r.metric}: ${fmt(r.avg)} \u2192 ${fmt(r.current)} (${r.percentChange})
-`;
-        }
-        body += "\n";
+        body += buildRegressionsList(pr.regressions);
       }
       if (pr.consecutiveFailures >= consecutiveFailLimit) {
         body += `\u26A0\uFE0F **Persistent failure** \u2014 ${pr.consecutiveFailures} consecutive runs
@@ -23927,27 +23948,12 @@ function buildSummary(analysis) {
 
 `;
       }
-      const failures = pr.assertions.filter((a) => !a.passed);
+      const failures = filterFailedAssertions(pr.assertions);
       if (failures.length > 0) {
-        md += `| Audit | Level | Actual | Threshold |
-`;
-        md += `|-------|-------|--------|----------|
-`;
-        for (const a of failures) {
-          md += `| ${a.auditId} | ${a.level} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
-`;
-        }
-        md += "\n";
+        md += buildAssertionTable(failures);
       }
       if (pr.regressions.length > 0) {
-        md += `**Regressions:**
-`;
-        for (const r of pr.regressions) {
-          const fmt = (v) => v < 10 ? v.toFixed(3) : v.toFixed(1);
-          md += `- ${r.metric}: ${fmt(r.avg)} \u2192 ${fmt(r.current)} (${r.percentChange})
-`;
-        }
-        md += "\n";
+        md += buildRegressionsList(pr.regressions);
       }
       if (pr.passed && failures.length === 0 && pr.regressions.length === 0) {
         md += `All checks passed.
