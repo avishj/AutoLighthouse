@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { History } from "./types";
 
@@ -21,6 +21,37 @@ export function validateHistoryPath(historyPath: string, workspace: string): str
   return resolved;
 }
 
+function getLockPath(historyPath: string): string {
+  return `${historyPath}.lock`;
+}
+
+function acquireLock(lockPath: string): boolean {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (existsSync(lockPath)) {
+      try {
+        unlinkSync(lockPath);
+      } catch {
+        // Another process might have taken it
+      }
+    }
+    try {
+      writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+      return true;
+    } catch {
+      // Try again
+    }
+  }
+  return false;
+}
+
+function releaseLock(lockPath: string): void {
+  try {
+    unlinkSync(lockPath);
+  } catch {
+    // Best effort cleanup
+  }
+}
+
 /** Load history from disk. Returns empty history if file doesn't exist or is invalid. */
 export function loadHistory(historyPath: string): History {
   if (!historyPath || !existsSync(historyPath)) return { ...EMPTY_HISTORY, paths: {} };
@@ -32,17 +63,29 @@ export function loadHistory(historyPath: string): History {
   }
 }
 
-/** Save history to disk, trimming runs per key to prevent bloat. */
+/** Save history to disk with file locking, trimming runs per key to prevent bloat. */
 export function saveHistory(historyPath: string, history: History, maxRunsPerKey: number): void {
-  for (const entry of Object.values(history.paths)) {
-    if (entry.runs.length > maxRunsPerKey) {
-      entry.runs = entry.runs.slice(-maxRunsPerKey);
-    }
+  const lockPath = getLockPath(historyPath);
+  
+  mkdirSync(dirname(lockPath), { recursive: true });
+  
+  if (!acquireLock(lockPath)) {
+    throw new Error(`Failed to acquire lock for ${historyPath}. Another process may be writing to it.`);
   }
+  
+  try {
+    for (const entry of Object.values(history.paths)) {
+      if (entry.runs.length > maxRunsPerKey) {
+        entry.runs = entry.runs.slice(-maxRunsPerKey);
+      }
+    }
 
-  history.lastUpdated = new Date().toISOString();
-  mkdirSync(dirname(historyPath), { recursive: true });
-  writeFileSync(historyPath, JSON.stringify(history, null, 2));
+    history.lastUpdated = new Date().toISOString();
+    mkdirSync(dirname(historyPath), { recursive: true });
+    writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  } finally {
+    releaseLock(lockPath);
+  }
 }
 
 /** Remove history entries not seen in `activeKeys` and older than `staleDays`. */

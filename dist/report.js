@@ -23748,6 +23748,31 @@ function validateHistoryPath(historyPath, workspace) {
   if (!resolved.startsWith(workspaceResolved)) return null;
   return resolved;
 }
+function getLockPath(historyPath) {
+  return `${historyPath}.lock`;
+}
+function acquireLock(lockPath) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if ((0, import_node_fs2.existsSync)(lockPath)) {
+      try {
+        (0, import_node_fs2.unlinkSync)(lockPath);
+      } catch {
+      }
+    }
+    try {
+      (0, import_node_fs2.writeFileSync)(lockPath, String(process.pid), { flag: "wx" });
+      return true;
+    } catch {
+    }
+  }
+  return false;
+}
+function releaseLock(lockPath) {
+  try {
+    (0, import_node_fs2.unlinkSync)(lockPath);
+  } catch {
+  }
+}
 function loadHistory(historyPath) {
   if (!historyPath || !(0, import_node_fs2.existsSync)(historyPath)) return { ...EMPTY_HISTORY, paths: {} };
   try {
@@ -23758,14 +23783,23 @@ function loadHistory(historyPath) {
   }
 }
 function saveHistory(historyPath, history, maxRunsPerKey) {
-  for (const entry of Object.values(history.paths)) {
-    if (entry.runs.length > maxRunsPerKey) {
-      entry.runs = entry.runs.slice(-maxRunsPerKey);
-    }
+  const lockPath = getLockPath(historyPath);
+  (0, import_node_fs2.mkdirSync)((0, import_node_path2.dirname)(lockPath), { recursive: true });
+  if (!acquireLock(lockPath)) {
+    throw new Error(`Failed to acquire lock for ${historyPath}. Another process may be writing to it.`);
   }
-  history.lastUpdated = (/* @__PURE__ */ new Date()).toISOString();
-  (0, import_node_fs2.mkdirSync)((0, import_node_path2.dirname)(historyPath), { recursive: true });
-  (0, import_node_fs2.writeFileSync)(historyPath, JSON.stringify(history, null, 2));
+  try {
+    for (const entry of Object.values(history.paths)) {
+      if (entry.runs.length > maxRunsPerKey) {
+        entry.runs = entry.runs.slice(-maxRunsPerKey);
+      }
+    }
+    history.lastUpdated = (/* @__PURE__ */ new Date()).toISOString();
+    (0, import_node_fs2.mkdirSync)((0, import_node_path2.dirname)(historyPath), { recursive: true });
+    (0, import_node_fs2.writeFileSync)(historyPath, JSON.stringify(history, null, 2));
+  } finally {
+    releaseLock(lockPath);
+  }
 }
 function cleanupStalePaths(history, activeKeys, staleDays) {
   const cutoff = Date.now() - staleDays * 24 * 60 * 60 * 1e3;
