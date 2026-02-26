@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ AutoLighthouse
+# AutoLighthouse
 
 **Maximalist Lighthouse CI for GitHub Actions. Zero config. No hosted server.**
 
@@ -28,7 +28,7 @@ jobs:
   audit:
     strategy:
       matrix:
-        profile: [mobile, desktop]
+        profile: [mobile, tablet, desktop] # Change as you wish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +38,7 @@ jobs:
             https://example.com
             https://example.com/pricing
           profile: ${{ matrix.profile }}
+          # Add more inputs if needed or use defaults
 
   report:
     needs: audit
