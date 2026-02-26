@@ -22,6 +22,12 @@ const mockSaveHistory = vi.fn();
 const mockCleanupStalePaths = vi.fn().mockReturnValue([]);
 const mockManageIssue = vi.fn().mockResolvedValue(undefined);
 const mockBuildSummary = vi.fn().mockReturnValue("## ✅ Lighthouse Report\n");
+const mockValidateResultsPath = vi.fn().mockImplementation((path: string, workspace: string) => {
+  return path; // Return the path as-is for tests
+});
+const mockValidateHistoryPath = vi.fn().mockImplementation((path: string, workspace: string) => {
+  return path; // Return the path as-is for tests
+});
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -74,6 +80,7 @@ function applyDoMocks() {
     parseLhr: (...args: unknown[]) => mockParseLhr(...args),
     extractMetrics: (...args: unknown[]) => mockExtractMetrics(...args),
     extractUrl: (...args: unknown[]) => mockExtractUrl(...args),
+    validateResultsPath: (...args: unknown[]) => mockValidateResultsPath(...args),
   }));
 
   vi.doMock("./regression", () => ({
@@ -84,6 +91,7 @@ function applyDoMocks() {
     loadHistory: (...args: unknown[]) => mockLoadHistory(...args),
     saveHistory: (...args: unknown[]) => mockSaveHistory(...args),
     cleanupStalePaths: (...args: unknown[]) => mockCleanupStalePaths(...args),
+    validateHistoryPath: (...args: unknown[]) => mockValidateHistoryPath(...args),
   }));
 
   vi.doMock("./issues", () => ({
@@ -163,6 +171,7 @@ function setupArtifacts(
 describe("report", () => {
   beforeEach(() => {
     resetState();
+    process.env.GITHUB_WORKSPACE = ".";
   });
 
   // ── Early exit ──────────────────────────────────────────────────────

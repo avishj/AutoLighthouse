@@ -171,3 +171,21 @@ runs:
         INPUT_STALE_PATH_DAYS: ${{ inputs.stale-path-days }}
         INPUT_MAX_HISTORY_RUNS: ${{ inputs.max-history-runs }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+
+    - name: Commit history
+      if: inputs.mode == 'report' && inputs.history-path != ''
+      shell: bash
+      run: |
+        if git diff --quiet -- "${{ inputs.history-path }}" 2>/dev/null && \
+           ! git ls-files --others --exclude-standard -- "${{ inputs.history-path }}" | grep -q .; then
+          echo "No history changes to commit."
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "${{ inputs.history-path }}"
+        git commit -m "chore: update lighthouse history"
+        git push
+      env:
+        GIT_AUTHOR_DATE: ""
+        GIT_COMMITTER_DATE: ""

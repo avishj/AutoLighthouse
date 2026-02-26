@@ -1,7 +1,27 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, isAbsolute, relative } from "node:path";
 import type { Profile, AssertionResult, Metrics } from "./types";
 import { METRIC_KEYS } from "./types";
+import { isPathSafe } from "./utils";
+
+function warn(message: string): void {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
+
+export function validateResultsPath(resultsPath: string, workspace: string): string | null {
+  if (!isPathSafe(resultsPath)) return null;
+  
+  const resolved = resolve(workspace, resultsPath);
+  const workspaceResolved = resolve(workspace);
+  
+  const rel = relative(workspaceResolved, resolved);
+  if (rel.startsWith("..") || isAbsolute(rel)) return null;
+  if (!existsSync(resolved)) return null;
+  
+  return resolved;
+}
 
 /** Metadata and LHR file paths for a single profile's audit results. */
 export interface ProfileArtifact {
@@ -54,7 +74,8 @@ function readAssertions(dir: string): AssertionResult[] {
   try {
     const data = JSON.parse(readFileSync(path, "utf-8"));
     return Array.isArray(data) ? data : [];
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse assertion-results.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return [];
   }
 }
@@ -78,7 +99,8 @@ export function extractUrl(lhr: Record<string, unknown>): string {
 export function parseLhr(path: string): Record<string, unknown> | null {
   try {
     return JSON.parse(readFileSync(path, "utf-8"));
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse LHR file ${path}: ${err instanceof Error ? err.message : "unknown error"}`);
     return null;
   }
 }
@@ -89,7 +111,8 @@ function readLinks(dir: string): Record<string, string> {
   try {
     const data = JSON.parse(readFileSync(path, "utf-8"));
     return typeof data === "object" && data !== null ? data : {};
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse links.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return {};
   }
 }

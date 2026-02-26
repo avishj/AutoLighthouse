@@ -1,4 +1,5 @@
 import type { AnalysisResult } from "./types";
+import { filterFailedAssertions, buildAssertionTable, buildRegressionsList } from "./utils";
 
 /** Generate GitHub Actions step summary markdown. */
 export function buildSummary(analysis: AnalysisResult): string {
@@ -24,23 +25,13 @@ export function buildSummary(analysis: AnalysisResult): string {
         md += `[View report](${pr.reportLink})\n\n`;
       }
 
-      const failures = pr.assertions.filter((a) => !a.passed);
+      const failures = filterFailedAssertions(pr.assertions);
       if (failures.length > 0) {
-        md += `| Audit | Level | Actual | Threshold |\n`;
-        md += `|-------|-------|--------|----------|\n`;
-        for (const a of failures) {
-          md += `| ${a.auditId} | ${a.level} | ${a.actual ?? "—"} | ${a.operator ?? ""} ${a.expected ?? "—"} |\n`;
-        }
-        md += "\n";
+        md += buildAssertionTable(failures);
       }
 
       if (pr.regressions.length > 0) {
-        md += `**Regressions:**\n`;
-        for (const r of pr.regressions) {
-          const fmt = (v: number) => (v < 10 ? v.toFixed(3) : v.toFixed(1));
-          md += `- ${r.metric}: ${fmt(r.avg)} → ${fmt(r.current)} (${r.percentChange})\n`;
-        }
-        md += "\n";
+        md += buildRegressionsList(pr.regressions);
       }
 
       if (pr.passed && failures.length === 0 && pr.regressions.length === 0) {

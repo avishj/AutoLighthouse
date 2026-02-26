@@ -1,8 +1,55 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
+import { dirname, resolve, relative, isAbsolute } from "node:path";
 import type { History } from "./types";
+import { isPathSafe } from "./utils";
+
+function warn(message: string): void {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
 
 const EMPTY_HISTORY: History = { version: 1, lastUpdated: "", paths: {} };
+
+export function validateHistoryPath(historyPath: string, workspace: string): string | null {
+  if (!isPathSafe(historyPath)) return null;
+  
+  const resolved = resolve(workspace, historyPath);
+  const workspaceResolved = resolve(workspace);
+  
+  const rel = relative(workspaceResolved, resolved);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) return null;
+  
+  return resolved;
+}
+
+function getLockPath(historyPath: string): string {
+  return `${historyPath}.lock`;
+}
+
+function acquireLock(lockPath: string): boolean {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+      return true;
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+        // Lock held by another process, retry
+        continue;
+      }
+      throw err;
+    }
+  }
+  return false;
+}
+
+function releaseLock(lockPath: string): void {
+  try {
+    unlinkSync(lockPath);
+  } catch {
+    // Best effort cleanup
+  }
+}
 
 /** Load history from disk. Returns empty history if file doesn't exist or is invalid. */
 export function loadHistory(historyPath: string): History {
@@ -10,22 +57,35 @@ export function loadHistory(historyPath: string): History {
   try {
     const data = JSON.parse(readFileSync(historyPath, "utf-8"));
     return { ...EMPTY_HISTORY, ...data };
-  } catch {
+  } catch (err) {
+    warn(`Failed to load history from ${historyPath}: ${err instanceof Error ? err.message : "unknown error"}`);
     return { ...EMPTY_HISTORY, paths: {} };
   }
 }
 
-/** Save history to disk, trimming runs per key to prevent bloat. */
+/** Save history to disk with file locking, trimming runs per key to prevent bloat. */
 export function saveHistory(historyPath: string, history: History, maxRunsPerKey: number): void {
-  for (const entry of Object.values(history.paths)) {
-    if (entry.runs.length > maxRunsPerKey) {
-      entry.runs = entry.runs.slice(-maxRunsPerKey);
-    }
+  const lockPath = getLockPath(historyPath);
+  
+  mkdirSync(dirname(lockPath), { recursive: true });
+  
+  if (!acquireLock(lockPath)) {
+    throw new Error(`Failed to acquire lock for ${historyPath}. Another process may be writing to it.`);
   }
+  
+  try {
+    for (const entry of Object.values(history.paths)) {
+      if (entry.runs.length > maxRunsPerKey) {
+        entry.runs = entry.runs.slice(-maxRunsPerKey);
+      }
+    }
 
-  history.lastUpdated = new Date().toISOString();
-  mkdirSync(dirname(historyPath), { recursive: true });
-  writeFileSync(historyPath, JSON.stringify(history, null, 2));
+    history.lastUpdated = new Date().toISOString();
+    mkdirSync(dirname(historyPath), { recursive: true });
+    writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  } finally {
+    releaseLock(lockPath);
+  }
 }
 
 /** Remove history entries not seen in `activeKeys` and older than `staleDays`. */

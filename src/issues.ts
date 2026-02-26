@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
 import type { AnalysisResult } from "./types";
+import { filterFailedAssertions, countAssertionLevels, buildAssertionTable, buildRegressionsList } from "./utils";
 
 const ISSUE_TITLE = "Lighthouse Performance Alert";
 const LABELS = ["lighthouse", "performance"];
@@ -49,8 +50,6 @@ export function buildIssueBody(
   body += `**Branch:** ${branch}\n`;
   body += `**Commit:** ${commit}\n\n`;
 
-  const fmt = (v: number) => (v < 10 ? v.toFixed(3) : v.toFixed(1));
-
   for (const url of analysis.urls) {
     if (url.passed) continue;
 
@@ -65,25 +64,15 @@ export function buildIssueBody(
         body += `[View report](${pr.reportLink})\n\n`;
       }
 
-      const failures = pr.assertions.filter((a) => !a.passed);
+      const failures = filterFailedAssertions(pr.assertions);
       if (failures.length > 0) {
-        const errors = failures.filter((a) => a.level === "error").length;
-        const warns = failures.filter((a) => a.level === "warn").length;
-        body += `**Assertion Failures:** ${errors} error(s), ${warns} warning(s)\n\n`;
-        body += `| Audit | Level | Actual | Threshold |\n`;
-        body += `|-------|-------|--------|----------|\n`;
-        for (const a of failures) {
-          body += `| ${a.auditId} | ${a.level} | ${a.actual ?? "—"} | ${a.operator ?? ""} ${a.expected ?? "—"} |\n`;
-        }
-        body += "\n";
+        const { errors, warnings } = countAssertionLevels(failures);
+        body += `**Assertion Failures:** ${errors} error(s), ${warnings} warning(s)\n\n`;
+        body += buildAssertionTable(failures);
       }
 
       if (pr.regressions.length > 0) {
-        body += `**Regressions:**\n`;
-        for (const r of pr.regressions) {
-          body += `- ${r.metric}: ${fmt(r.avg)} → ${fmt(r.current)} (${r.percentChange})\n`;
-        }
-        body += "\n";
+        body += buildRegressionsList(pr.regressions);
       }
 
       if (pr.consecutiveFailures >= consecutiveFailLimit) {
