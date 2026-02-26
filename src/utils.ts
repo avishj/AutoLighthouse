@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 import type { AssertionResult, Regression } from "./types";
 
 export function fmt(value: number): string {
@@ -12,7 +12,7 @@ export function validatePathTraversal(
   const resolved = resolve(basePath, userPath);
   const resolvedBase = resolve(basePath);
   
-  if (!resolved.startsWith(resolvedBase)) {
+  if (!resolved.startsWith(resolvedBase + sep)) {
     return null;
   }
   
