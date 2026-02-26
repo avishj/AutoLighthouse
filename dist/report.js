@@ -24104,10 +24104,12 @@ async function run() {
         passed: !hasFailed,
         reportLink: r.reportLink
       };
-      if (!urlMap.has(r.url)) {
-        urlMap.set(r.url, { url: r.url, pathname: r.pathname, profiles: [] });
+      let urlEntry = urlMap.get(r.url);
+      if (!urlEntry) {
+        urlEntry = { url: r.url, pathname: r.pathname, profiles: [] };
+        urlMap.set(r.url, urlEntry);
       }
-      urlMap.get(r.url).profiles.push(profileResult);
+      urlEntry.profiles.push(profileResult);
     }
     const urls = Array.from(urlMap.values()).map((u) => ({
       ...u,
