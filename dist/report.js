@@ -23605,7 +23605,6 @@ function parsePositiveInt(value, fallback) {
 }
 function parseFailOn(value) {
   if (value === "warn" || value === "never") return value;
-  if (value === "error") return value;
   return "error";
 }
 
@@ -23623,22 +23622,61 @@ var METRIC_KEYS = [
   "interactive"
 ];
 
+// src/utils.ts
+function isPathSafe(inputPath) {
+  const normalized = inputPath.replace(/\\/g, "/");
+  if (normalized.startsWith("/")) return false;
+  if (normalized.split("/").includes("..")) return false;
+  return true;
+}
+function fmt(value) {
+  return value < 10 ? value.toFixed(3) : value.toFixed(1);
+}
+function filterFailedAssertions(assertions) {
+  return assertions.filter((a) => !a.passed);
+}
+function countAssertionLevels(assertions) {
+  const errors = assertions.filter((a) => a.level === "error").length;
+  const warnings = assertions.filter((a) => a.level === "warn").length;
+  return { errors, warnings };
+}
+function buildAssertionTable(assertions) {
+  if (assertions.length === 0) return "";
+  let md = `| Audit | Level | Actual | Threshold |
+`;
+  md += `|-------|-------|--------|----------|
+`;
+  for (const a of assertions) {
+    md += `| ${a.auditId} | ${a.level} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
+`;
+  }
+  md += "\n";
+  return md;
+}
+function buildRegressionsList(regressions) {
+  if (regressions.length === 0) return "";
+  let md = `**Regressions:**
+`;
+  for (const r of regressions) {
+    md += `- ${r.metric}: ${fmt(r.avg)} \u2192 ${fmt(r.current)} (${r.percentChange})
+`;
+  }
+  md += "\n";
+  return md;
+}
+
 // src/lhr.ts
 function warn(message) {
   if (typeof console !== "undefined") {
     console.warn(`[AutoLighthouse] ${message}`);
   }
 }
-function isPathSafe(inputPath) {
-  const normalized = inputPath.replace(/\\/g, "/");
-  if (normalized.includes("..") || normalized.startsWith("/")) return false;
-  return true;
-}
 function validateResultsPath(resultsPath, workspace) {
   if (!isPathSafe(resultsPath)) return null;
   const resolved = (0, import_node_path.resolve)(workspace, resultsPath);
   const workspaceResolved = (0, import_node_path.resolve)(workspace);
-  if (!resolved.startsWith(workspaceResolved)) return null;
+  const rel = (0, import_node_path.relative)(workspaceResolved, resolved);
+  if (!rel || rel.startsWith("..") || (0, import_node_path.isAbsolute)(rel)) return null;
   if (!(0, import_node_fs.existsSync)(resolved)) return null;
   return resolved;
 }
@@ -23749,16 +23787,12 @@ function warn2(message) {
   }
 }
 var EMPTY_HISTORY = { version: 1, lastUpdated: "", paths: {} };
-function isPathSafe2(inputPath) {
-  const normalized = inputPath.replace(/\\/g, "/");
-  if (normalized.includes("..") || normalized.startsWith("/")) return false;
-  return true;
-}
 function validateHistoryPath(historyPath, workspace) {
-  if (!isPathSafe2(historyPath)) return null;
+  if (!isPathSafe(historyPath)) return null;
   const resolved = (0, import_node_path2.resolve)(workspace, historyPath);
   const workspaceResolved = (0, import_node_path2.resolve)(workspace);
-  if (!resolved.startsWith(workspaceResolved)) return null;
+  const rel = (0, import_node_path2.relative)(workspaceResolved, resolved);
+  if (!rel || rel.startsWith("..") || (0, import_node_path2.isAbsolute)(rel)) return null;
   return resolved;
 }
 function getLockPath(historyPath) {
@@ -23766,16 +23800,14 @@ function getLockPath(historyPath) {
 }
 function acquireLock(lockPath) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    if ((0, import_node_fs2.existsSync)(lockPath)) {
-      try {
-        (0, import_node_fs2.unlinkSync)(lockPath);
-      } catch {
-      }
-    }
     try {
       (0, import_node_fs2.writeFileSync)(lockPath, String(process.pid), { flag: "wx" });
       return true;
-    } catch {
+    } catch (err) {
+      if (err.code === "EEXIST") {
+        continue;
+      }
+      throw err;
     }
   }
   return false;
@@ -23828,43 +23860,6 @@ function cleanupStalePaths(history, activeKeys, staleDays) {
     }
   }
   return removed;
-}
-
-// src/utils.ts
-function fmt(value) {
-  return value < 10 ? value.toFixed(3) : value.toFixed(1);
-}
-function filterFailedAssertions(assertions) {
-  return assertions.filter((a) => !a.passed);
-}
-function countAssertionLevels(assertions) {
-  const errors = assertions.filter((a) => a.level === "error").length;
-  const warnings = assertions.filter((a) => a.level === "warn").length;
-  return { errors, warnings };
-}
-function buildAssertionTable(assertions) {
-  if (assertions.length === 0) return "";
-  let md = `| Audit | Level | Actual | Threshold |
-`;
-  md += `|-------|-------|--------|----------|
-`;
-  for (const a of assertions) {
-    md += `| ${a.auditId} | ${a.level} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
-`;
-  }
-  md += "\n";
-  return md;
-}
-function buildRegressionsList(regressions) {
-  if (regressions.length === 0) return "";
-  let md = `**Regressions:**
-`;
-  for (const r of regressions) {
-    md += `- ${r.metric}: ${fmt(r.avg)} \u2192 ${fmt(r.current)} (${r.percentChange})
-`;
-  }
-  md += "\n";
-  return md;
 }
 
 // src/issues.ts
