@@ -17,7 +17,7 @@ export function validateResultsPath(resultsPath: string, workspace: string): str
   const workspaceResolved = resolve(workspace);
   
   const rel = relative(workspaceResolved, resolved);
-  if (!rel || rel.startsWith("..") || isAbsolute(rel)) return null;
+  if (rel.startsWith("..") || isAbsolute(rel)) return null;
   if (!existsSync(resolved)) return null;
   
   return resolved;
