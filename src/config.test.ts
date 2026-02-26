@@ -105,4 +105,27 @@ describe("parseConfig", () => {
     expect(cfg.stalePathDays).toBe(30);
     expect(cfg.maxHistoryRuns).toBe(100);
   });
+
+  it("falls back to defaults for negative or zero values", () => {
+    process.env.INPUT_REGRESSION_THRESHOLD = "-5";
+    process.env.INPUT_CONSECUTIVE_FAIL_LIMIT = "0";
+    process.env.INPUT_STALE_PATH_DAYS = "-1";
+    process.env.INPUT_MAX_HISTORY_RUNS = "-10";
+
+    const cfg = parseConfig();
+    expect(cfg.regressionThreshold).toBe(10);
+    expect(cfg.consecutiveFailLimit).toBe(3);
+    expect(cfg.stalePathDays).toBe(30);
+    expect(cfg.maxHistoryRuns).toBe(100);
+  });
+
+  it("caps regressionThreshold at 100", () => {
+    process.env.INPUT_REGRESSION_THRESHOLD = "150";
+    expect(parseConfig().regressionThreshold).toBe(100);
+  });
+
+  it("failOn accepts valid values", () => {
+    process.env.INPUT_FAIL_ON = "error";
+    expect(parseConfig().failOn).toBe("error");
+  });
 });
