@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, relative, isAbsolute } from "node:path";
 import type { History } from "./types";
 
 function warn(message: string): void {
@@ -22,7 +22,8 @@ export function validateHistoryPath(historyPath: string, workspace: string): str
   const resolved = resolve(workspace, historyPath);
   const workspaceResolved = resolve(workspace);
   
-  if (!resolved.startsWith(workspaceResolved)) return null;
+  const rel = relative(workspaceResolved, resolved);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) return null;
   
   return resolved;
 }
