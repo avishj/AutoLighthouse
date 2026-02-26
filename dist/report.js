@@ -23626,6 +23626,7 @@ var METRIC_KEYS = [
 function isPathSafe(inputPath) {
   const normalized = inputPath.replace(/\\/g, "/");
   if (normalized.startsWith("/")) return false;
+  if (/^[a-zA-Z]:/.test(normalized)) return false;
   if (normalized.split("/").includes("..")) return false;
   return true;
 }
@@ -23676,7 +23677,7 @@ function validateResultsPath(resultsPath, workspace) {
   const resolved = (0, import_node_path.resolve)(workspace, resultsPath);
   const workspaceResolved = (0, import_node_path.resolve)(workspace);
   const rel = (0, import_node_path.relative)(workspaceResolved, resolved);
-  if (!rel || rel.startsWith("..") || (0, import_node_path.isAbsolute)(rel)) return null;
+  if (rel.startsWith("..") || (0, import_node_path.isAbsolute)(rel)) return null;
   if (!(0, import_node_fs.existsSync)(resolved)) return null;
   return resolved;
 }
