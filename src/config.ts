@@ -39,6 +39,5 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 function parseFailOn(value: string | undefined): ReportConfig["failOn"] {
   if (value === "warn" || value === "never") return value;
-  if (value === "error") return value;
   return "error";
 }
