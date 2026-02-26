@@ -2,17 +2,12 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, resolve, isAbsolute, relative } from "node:path";
 import type { Profile, AssertionResult, Metrics } from "./types";
 import { METRIC_KEYS } from "./types";
+import { isPathSafe } from "./utils";
 
 function warn(message: string): void {
   if (typeof console !== "undefined") {
     console.warn(`[AutoLighthouse] ${message}`);
   }
-}
-
-export function isPathSafe(inputPath: string): boolean {
-  const normalized = inputPath.replace(/\\/g, "/");
-  if (normalized.includes("..") || normalized.startsWith("/")) return false;
-  return true;
 }
 
 export function validateResultsPath(resultsPath: string, workspace: string): string | null {

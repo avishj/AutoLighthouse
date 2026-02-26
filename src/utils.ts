@@ -1,6 +1,12 @@
 import { resolve, sep } from "node:path";
 import type { AssertionResult, Regression } from "./types";
 
+export function isPathSafe(inputPath: string): boolean {
+  const normalized = inputPath.replace(/\\/g, "/");
+  if (normalized.includes("..") || normalized.startsWith("/")) return false;
+  return true;
+}
+
 export function fmt(value: number): string {
   return value < 10 ? value.toFixed(3) : value.toFixed(1);
 }

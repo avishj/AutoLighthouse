@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute } from "node:path";
 import type { History } from "./types";
+import { isPathSafe } from "./utils";
 
 function warn(message: string): void {
   if (typeof console !== "undefined") {
@@ -9,12 +10,6 @@ function warn(message: string): void {
 }
 
 const EMPTY_HISTORY: History = { version: 1, lastUpdated: "", paths: {} };
-
-export function isPathSafe(inputPath: string): boolean {
-  const normalized = inputPath.replace(/\\/g, "/");
-  if (normalized.includes("..") || normalized.startsWith("/")) return false;
-  return true;
-}
 
 export function validateHistoryPath(historyPath: string, workspace: string): string | null {
   if (!isPathSafe(historyPath)) return null;
