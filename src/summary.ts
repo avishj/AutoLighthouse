@@ -1,5 +1,5 @@
 import type { AnalysisResult } from "./types";
-import { fmt, filterFailedAssertions, buildAssertionTable, buildRegressionsList } from "./utils";
+import { filterFailedAssertions, buildAssertionTable, buildRegressionsList } from "./utils";
 
 /** Generate GitHub Actions step summary markdown. */
 export function buildSummary(analysis: AnalysisResult): string {
