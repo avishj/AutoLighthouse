@@ -116,7 +116,7 @@ On by default. Enforced at `error` level on strict preset.
 
 ## Regression Detection
 
-Metrics are tracked in a JSON history file committed to your repo (default: `.lighthouse/history.json`).
+Metrics are tracked in a JSON history file (default: `.lighthouse/history.json`). The action automatically commits this file back to the repo after each report run.
 
 - Compares each metric against the **rolling average of the last 5 runs**
 - Flags a regression when the current value exceeds the average by more than `regression-threshold` (default 10%)
