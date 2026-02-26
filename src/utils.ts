@@ -20,7 +20,13 @@ export function validatePathTraversal(
   const resolved = resolve(basePath, userPath);
   const resolvedBase = resolve(basePath);
   
-  if (!resolved.startsWith(resolvedBase + sep)) {
+  const isSamePath = resolved === resolvedBase;
+  const isNestedPath = resolved.startsWith(resolvedBase + sep);
+  
+  const isRootBase = resolvedBase === sep || /^[a-zA-Z]:\\?$/.test(resolvedBase);
+  const isValidRootCase = isRootBase && resolved.startsWith(resolvedBase);
+  
+  if (!isSamePath && !isNestedPath && !isValidRootCase) {
     return null;
   }
   
