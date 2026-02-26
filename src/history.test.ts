@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadHistory, saveHistory, cleanupStalePaths } from "./history";
+import { loadHistory, saveHistory, cleanupStalePaths, validateHistoryPath } from "./history";
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -172,4 +172,27 @@ describe("cleanupStalePaths", () => {
     expect(removed).toEqual([]);
     expect(history.paths["mobile:/"]).toBeDefined();
   });
+});
+
+describe("validateHistoryPath", () => {
+	it("rejects path that resolves to the workspace root", () => {
+		expect(validateHistoryPath(".", testDir)).toBeNull();
+		expect(validateHistoryPath("", testDir)).toBeNull();
+		expect(validateHistoryPath("sub/..", testDir)).toBeNull();
+	});
+
+	it("rejects path traversal above workspace", () => {
+		expect(validateHistoryPath("../outside", testDir)).toBeNull();
+		expect(validateHistoryPath("sub/../../outside", testDir)).toBeNull();
+	});
+
+	it("accepts a valid relative path within workspace", () => {
+		const result = validateHistoryPath("history.json", testDir);
+		expect(result).toBe(join(testDir, "history.json"));
+	});
+
+	it("accepts a nested relative path within workspace", () => {
+		const result = validateHistoryPath("sub/dir/history.json", testDir);
+		expect(result).toBe(join(testDir, "sub", "dir", "history.json"));
+	});
 });
