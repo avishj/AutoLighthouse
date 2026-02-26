@@ -153,7 +153,7 @@ describe("detectRegressions", () => {
   it("window limits comparison to recent runs only", () => {
     // Site was slow (2000ms) for 8 runs, then improved to ~1000ms
     const runs = [
-      ...Array(8).fill(makeMetrics({ "first-contentful-paint": 2000 })),
+      ...Array.from({ length: 8 }, () => makeMetrics({ "first-contentful-paint": 2000 })),
       makeMetrics({ "first-contentful-paint": 950 }),
       makeMetrics({ "first-contentful-paint": 1050 }),
     ];
