@@ -23624,6 +23624,11 @@ var METRIC_KEYS = [
 ];
 
 // src/lhr.ts
+function warn(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
 function isPathSafe(inputPath) {
   const normalized = inputPath.replace(/\\/g, "/");
   if (normalized.includes("..") || normalized.startsWith("/")) return false;
@@ -23670,7 +23675,8 @@ function readAssertions(dir) {
   try {
     const data = JSON.parse((0, import_node_fs.readFileSync)(path, "utf-8"));
     return Array.isArray(data) ? data : [];
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse assertion-results.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return [];
   }
 }
@@ -23688,7 +23694,8 @@ function extractUrl(lhr) {
 function parseLhr(path) {
   try {
     return JSON.parse((0, import_node_fs.readFileSync)(path, "utf-8"));
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse LHR file ${path}: ${err instanceof Error ? err.message : "unknown error"}`);
     return null;
   }
 }
@@ -23698,7 +23705,8 @@ function readLinks(dir) {
   try {
     const data = JSON.parse((0, import_node_fs.readFileSync)(path, "utf-8"));
     return typeof data === "object" && data !== null ? data : {};
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse links.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return {};
   }
 }
@@ -23735,6 +23743,11 @@ function detectRegressions(metrics, entry, thresholdPercent, windowSize = 5) {
 // src/history.ts
 var import_node_fs2 = require("node:fs");
 var import_node_path2 = require("node:path");
+function warn2(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
 var EMPTY_HISTORY = { version: 1, lastUpdated: "", paths: {} };
 function isPathSafe2(inputPath) {
   const normalized = inputPath.replace(/\\/g, "/");
@@ -23778,7 +23791,8 @@ function loadHistory(historyPath) {
   try {
     const data = JSON.parse((0, import_node_fs2.readFileSync)(historyPath, "utf-8"));
     return { ...EMPTY_HISTORY, ...data };
-  } catch {
+  } catch (err) {
+    warn2(`Failed to load history from ${historyPath}: ${err instanceof Error ? err.message : "unknown error"}`);
     return { ...EMPTY_HISTORY, paths: {} };
   }
 }
@@ -24164,7 +24178,7 @@ async function run() {
 function extractPathname(url) {
   try {
     return new URL(url).pathname || "/";
-  } catch {
+  } catch (err) {
     return "/";
   }
 }

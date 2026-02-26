@@ -2,6 +2,12 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "
 import { dirname, resolve } from "node:path";
 import type { History } from "./types";
 
+function warn(message: string): void {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
+
 const EMPTY_HISTORY: History = { version: 1, lastUpdated: "", paths: {} };
 
 export function isPathSafe(inputPath: string): boolean {
@@ -58,7 +64,8 @@ export function loadHistory(historyPath: string): History {
   try {
     const data = JSON.parse(readFileSync(historyPath, "utf-8"));
     return { ...EMPTY_HISTORY, ...data };
-  } catch {
+  } catch (err) {
+    warn(`Failed to load history from ${historyPath}: ${err instanceof Error ? err.message : "unknown error"}`);
     return { ...EMPTY_HISTORY, paths: {} };
   }
 }

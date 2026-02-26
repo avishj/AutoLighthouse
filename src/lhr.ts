@@ -3,6 +3,12 @@ import { join, resolve, isAbsolute } from "node:path";
 import type { Profile, AssertionResult, Metrics } from "./types";
 import { METRIC_KEYS } from "./types";
 
+function warn(message: string): void {
+  if (typeof console !== "undefined") {
+    console.warn(`[AutoLighthouse] ${message}`);
+  }
+}
+
 export function isPathSafe(inputPath: string): boolean {
   const normalized = inputPath.replace(/\\/g, "/");
   if (normalized.includes("..") || normalized.startsWith("/")) return false;
@@ -72,7 +78,8 @@ function readAssertions(dir: string): AssertionResult[] {
   try {
     const data = JSON.parse(readFileSync(path, "utf-8"));
     return Array.isArray(data) ? data : [];
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse assertion-results.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return [];
   }
 }
@@ -96,7 +103,8 @@ export function extractUrl(lhr: Record<string, unknown>): string {
 export function parseLhr(path: string): Record<string, unknown> | null {
   try {
     return JSON.parse(readFileSync(path, "utf-8"));
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse LHR file ${path}: ${err instanceof Error ? err.message : "unknown error"}`);
     return null;
   }
 }
@@ -107,7 +115,8 @@ function readLinks(dir: string): Record<string, string> {
   try {
     const data = JSON.parse(readFileSync(path, "utf-8"));
     return typeof data === "object" && data !== null ? data : {};
-  } catch {
+  } catch (err) {
+    warn(`Failed to parse links.json in ${dir}: ${err instanceof Error ? err.message : "unknown error"}`);
     return {};
   }
 }

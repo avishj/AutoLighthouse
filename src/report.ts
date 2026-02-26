@@ -187,7 +187,7 @@ async function run(): Promise<void> {
 function extractPathname(url: string): string {
   try {
     return new URL(url).pathname || "/";
-  } catch {
+  } catch (err) {
     return "/";
   }
 }
