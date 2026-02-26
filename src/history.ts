@@ -33,18 +33,15 @@ function getLockPath(historyPath: string): string {
 
 function acquireLock(lockPath: string): boolean {
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (existsSync(lockPath)) {
-      try {
-        unlinkSync(lockPath);
-      } catch {
-        // Another process might have taken it
-      }
-    }
     try {
       writeFileSync(lockPath, String(process.pid), { flag: "wx" });
       return true;
-    } catch {
-      // Try again
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+        // Lock held by another process, retry
+        continue;
+      }
+      throw err;
     }
   }
   return false;
