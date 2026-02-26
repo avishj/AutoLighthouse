@@ -24,6 +24,10 @@ on:
   schedule:
     - cron: "0 6 * * 1"
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   audit:
     strategy:
