@@ -23786,6 +23786,7 @@ function detectRegressions(metrics, entry, thresholdPercent, windowSize = 5) {
 // src/history.ts
 var import_node_fs2 = require("node:fs");
 var import_node_path2 = require("node:path");
+var import_promises = require("node:timers/promises");
 function warn2(message) {
   if (typeof console !== "undefined") {
     console.warn(`[AutoLighthouse] ${message}`);
@@ -23803,16 +23804,18 @@ function validateHistoryPath(historyPath, workspace) {
 function getLockPath(historyPath) {
   return `${historyPath}.lock`;
 }
-function acquireLock(lockPath) {
+async function acquireLock(lockPath) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       (0, import_node_fs2.writeFileSync)(lockPath, String(process.pid), { flag: "wx" });
       return true;
     } catch (err) {
-      if (err.code === "EEXIST") {
-        continue;
+      if (err.code !== "EEXIST") {
+        throw err;
       }
-      throw err;
+      if (attempt < 2) {
+        await (0, import_promises.setTimeout)(50);
+      }
     }
   }
   return false;
@@ -23833,10 +23836,10 @@ function loadHistory(historyPath) {
     return { ...EMPTY_HISTORY, paths: {} };
   }
 }
-function saveHistory(historyPath, history, maxRunsPerKey) {
+async function saveHistory(historyPath, history, maxRunsPerKey) {
   const lockPath = getLockPath(historyPath);
   (0, import_node_fs2.mkdirSync)((0, import_node_path2.dirname)(lockPath), { recursive: true });
-  if (!acquireLock(lockPath)) {
+  if (!await acquireLock(lockPath)) {
     throw new Error(`Failed to acquire lock for ${historyPath}. Another process may be writing to it.`);
   }
   try {
@@ -24146,8 +24149,12 @@ async function run() {
           info(`Cleaned up ${removed.length} stale history path(s): ${removed.join(", ")}`);
         }
       }
-      saveHistory(historyPath, history, config.maxHistoryRuns);
-      info(`History saved to ${historyPath}`);
+      try {
+        await saveHistory(historyPath, history, config.maxHistoryRuns);
+        info(`History saved to ${historyPath}`);
+      } catch (err) {
+        warning(`Failed to save history: ${err instanceof Error ? err.message : err}`);
+      }
     }
     if (config.createIssues && config.githubToken) {
       try {
