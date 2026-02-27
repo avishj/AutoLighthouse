@@ -18,6 +18,7 @@ import type {
   UrlResult,
   AnalysisResult,
 } from "./types";
+import { METRIC_KEYS } from "./types";
 
 async function run(): Promise<void> {
   try {
@@ -64,6 +65,9 @@ async function run(): Promise<void> {
     for (const artifact of artifacts) {
       const failedAssertions = artifact.assertions.filter((a) => !a.passed);
 
+      // Group LHR files by URL to deduplicate multiple runs per profile+URL
+      const lhrsByUrl = new Map<string, { pathname: string; allMetrics: Metrics[] }>();
+
       for (const lhrPath of artifact.lhrPaths) {
         const lhr = parseLhr(lhrPath);
         if (!lhr) continue;
@@ -71,8 +75,17 @@ async function run(): Promise<void> {
         const url = extractUrl(lhr);
         if (!url) continue;
 
-        const pathname = extractPathname(url);
         const metrics = extractMetrics(lhr);
+        let entry = lhrsByUrl.get(url);
+        if (!entry) {
+          entry = { pathname: extractPathname(url), allMetrics: [] };
+          lhrsByUrl.set(url, entry);
+        }
+        entry.allMetrics.push(metrics);
+      }
+
+      for (const [url, { pathname, allMetrics }] of lhrsByUrl) {
+        const metrics = medianMetrics(allMetrics);
         const urlAssertions = failedAssertions.filter((a) => !a.url || a.url === url);
         const reportLink = artifact.links[url] ?? undefined;
 
@@ -194,6 +207,20 @@ async function run(): Promise<void> {
       core.setFailed(error.message);
     }
   }
+}
+
+/** Pick the median value for each metric across multiple LHR runs. */
+function medianMetrics(allMetrics: Metrics[]): Metrics {
+  if (allMetrics.length === 1) return allMetrics[0];
+  const result = {} as Metrics;
+  for (const key of METRIC_KEYS) {
+    const values = allMetrics
+      .map((m) => m[key])
+      .filter((v): v is number => v !== undefined)
+      .sort((a, b) => a - b);
+    result[key] = values.length > 0 ? values[Math.floor(values.length / 2)] : undefined;
+  }
+  return result;
 }
 
 function extractPathname(url: string): string {
