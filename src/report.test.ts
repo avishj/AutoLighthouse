@@ -38,6 +38,7 @@ function resetState() {
   failedMsg = undefined;
   summaryWritten = undefined;
   Object.keys(configOverrides).forEach((k) => delete (configOverrides as Record<string, unknown>)[k]);
+  mockFsExistsSync = true;
 }
 
 let mockFsExistsSync = true;
@@ -189,7 +190,6 @@ describe("report", () => {
       await runReport(() => {
         mockValidateResultsPath.mockReturnValue(null);
       });
-      mockFsExistsSync = true;
 
       expect(failedMsg).toBeUndefined();
       expect(warnings).toContain("Results directory does not exist — no audit artifacts were downloaded.");
