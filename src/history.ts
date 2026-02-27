@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute } from "node:path";
+import { setTimeout } from "node:timers/promises";
 import type { History } from "./types";
 import { isPathSafe } from "./utils";
 
@@ -27,17 +28,15 @@ function getLockPath(historyPath: string): string {
   return `${historyPath}.lock`;
 }
 
-function acquireLock(lockPath: string): boolean {
+async function acquireLock(lockPath: string): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       writeFileSync(lockPath, String(process.pid), { flag: "wx" });
       return true;
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "EEXIST") {
-        // Lock held by another process, retry
-        continue;
+    } catch {
+      if (attempt < 2) {
+        await setTimeout(50);
       }
-      throw err;
     }
   }
   return false;
@@ -64,12 +63,12 @@ export function loadHistory(historyPath: string): History {
 }
 
 /** Save history to disk with file locking, trimming runs per key to prevent bloat. */
-export function saveHistory(historyPath: string, history: History, maxRunsPerKey: number): void {
+export async function saveHistory(historyPath: string, history: History, maxRunsPerKey: number): Promise<void> {
   const lockPath = getLockPath(historyPath);
   
   mkdirSync(dirname(lockPath), { recursive: true });
   
-  if (!acquireLock(lockPath)) {
+  if (!(await acquireLock(lockPath))) {
     throw new Error(`Failed to acquire lock for ${historyPath}. Another process may be writing to it.`);
   }
   
