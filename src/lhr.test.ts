@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { extractMetrics, extractUrl, parseLhr, discoverArtifacts } from "./lhr";
+import { extractMetrics, extractUrl, parseLhr, discoverArtifacts, validateResultsPath } from "./lhr";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -187,5 +187,35 @@ describe("discoverArtifacts", () => {
     const artifacts = discoverArtifacts(testDir);
     expect(artifacts[0].assertions).toEqual([]);
     expect(artifacts[0].links).toEqual({});
+  });
+});
+
+describe("validateResultsPath", () => {
+  it("returns resolved path for valid relative path", () => {
+    const dir = join(tmpdir(), "valid");
+    mkdirSync(dir, { recursive: true });
+    const result = validateResultsPath("valid", tmpdir());
+    expect(result).toBe(join(tmpdir(), "valid"));
+    rmSync(dir, { recursive: true });
+  });
+
+  it("blocks path traversal attempt", () => {
+    const result = validateResultsPath("../secrets", "/app");
+    expect(result).toBeNull();
+  });
+
+  it("blocks path outside workspace", () => {
+    const result = validateResultsPath("/etc/passwd", "/app");
+    expect(result).toBeNull();
+  });
+
+  it("blocks non-existent paths", () => {
+    const result = validateResultsPath("nonexistent", "/app");
+    expect(result).toBeNull();
+  });
+
+  it("blocks unsafe paths", () => {
+    const result = validateResultsPath("/absolute/path", "/app");
+    expect(result).toBeNull();
   });
 });
