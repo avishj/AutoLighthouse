@@ -224,31 +224,39 @@ describe("discoverArtifacts", () => {
 });
 
 describe("validateResultsPath", () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `validate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
+  });
+
   it("returns resolved path for valid relative path", () => {
-    const dir = join(tmpdir(), "valid");
-    mkdirSync(dir, { recursive: true });
-    const result = validateResultsPath("valid", tmpdir());
-    expect(result).toBe(join(tmpdir(), "valid"));
-    rmSync(dir, { recursive: true });
+    const result = validateResultsPath(".", testDir);
+    expect(result).toBe(testDir);
   });
 
   it("blocks path traversal attempt", () => {
-    const result = validateResultsPath("../secrets", "/app");
+    const result = validateResultsPath("../secrets", testDir);
     expect(result).toBeNull();
   });
 
   it("blocks path outside workspace", () => {
-    const result = validateResultsPath("/etc/passwd", "/app");
+    const result = validateResultsPath("/etc/passwd", testDir);
     expect(result).toBeNull();
   });
 
   it("blocks non-existent paths", () => {
-    const result = validateResultsPath("nonexistent", "/app");
+    const result = validateResultsPath("nonexistent", testDir);
     expect(result).toBeNull();
   });
 
   it("blocks unsafe paths", () => {
-    const result = validateResultsPath("/absolute/path", "/app");
+    const result = validateResultsPath("/absolute/path", testDir);
     expect(result).toBeNull();
   });
 });
