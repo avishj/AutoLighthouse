@@ -279,3 +279,61 @@ describe("manageIssue", () => {
     await manageIssue(mockOctokit, analysis, 3);
   });
 });
+
+describe("ensureLabels", () => {
+  beforeEach(() => {
+    vi.spyOn(github.context, "repo", "get").mockReturnValue({ owner: "test-owner", repo: "test-repo" });
+  });
+
+  it("creates labels when they don't exist", async () => {
+    const createLabelFn = vi.fn().mockResolvedValue({});
+    const mockOctokit = {
+      rest: {
+        issues: {
+          createLabel: createLabelFn,
+        },
+      },
+    } as any;
+
+    await (await import("./issues")).ensureLabels(mockOctokit);
+
+    expect(createLabelFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles 422 error (label already exists)", async () => {
+    const createLabelFn = vi.fn()
+      .mockRejectedValueOnce({ status: 422 }) // First label exists
+      .mockResolvedValueOnce({}); // Second label created
+    const mockOctokit = {
+      rest: {
+        issues: {
+          createLabel: createLabelFn,
+        },
+      },
+    } as any;
+
+    const result = await (await import("./issues")).ensureLabels(mockOctokit);
+
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe("findOpenIssue", () => {
+  beforeEach(() => {
+    vi.spyOn(github.context, "repo", "get").mockReturnValue({ owner: "test-owner", repo: "test-repo" });
+  });
+
+  it("returns null on API error", async () => {
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockRejectedValue(new Error("API error")),
+        },
+      },
+    } as any;
+
+    const result = await (await import("./issues")).findOpenIssue(mockOctokit);
+
+    expect(result).toBeNull();
+  });
+});
