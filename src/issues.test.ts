@@ -47,13 +47,65 @@ describe("buildIssueBody", () => {
       passed: false,
     };
     const body = buildIssueBody(analysis, 3);
-    expect(body).toContain("## Lighthouse Performance Alert");
-    expect(body).toContain("**Branch:** main");
-    expect(body).toContain("**Commit:** abc1234");
-    expect(body).toContain("auto-managed by AutoLighthouse");
+    expect(body).toContain("Lighthouse Performance Alert");
+    expect(body).toContain("`main`");
+    expect(body).toContain("`abc1234`");
+    expect(body).toContain("Auto-managed by AutoLighthouse");
   });
 
-  it("shows assertion failures table", () => {
+  it("shows summary with counts", () => {
+    const analysis: AnalysisResult = {
+      urls: [
+        {
+          url: "https://example.com/",
+          pathname: "/",
+          profiles: [
+            makeProfile({
+              passed: false,
+              assertions: [
+                { auditId: "fcp", level: "error", actual: 0.4, expected: 0.9, operator: ">=", passed: false },
+                { auditId: "si", level: "warn", actual: 0.6, expected: 0.8, operator: ">=", passed: false },
+              ],
+            }),
+          ],
+          passed: false,
+        },
+      ],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+    const body = buildIssueBody(analysis, 3);
+    expect(body).toContain("1 error");
+    expect(body).toContain("1 warning");
+    expect(body).toContain("1 failing");
+  });
+
+  it("shows status matrix with profile columns", () => {
+    const analysis: AnalysisResult = {
+      urls: [
+        {
+          url: "https://example.com/",
+          pathname: "/",
+          profiles: [
+            makeProfile({ profile: "mobile", passed: false, assertions: [{ auditId: "perf", level: "error", actual: 0.4, expected: 0.9, operator: ">=", passed: false }] }),
+            makeProfile({ profile: "desktop", passed: true }),
+          ],
+          passed: false,
+        },
+      ],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+    const body = buildIssueBody(analysis, 3);
+    expect(body).toContain("mobile");
+    expect(body).toContain("desktop");
+    expect(body).toContain("🔴");
+    expect(body).toContain("🟢");
+  });
+
+  it("shows assertion failures table with emoji levels", () => {
     const analysis: AnalysisResult = {
       urls: [
         {
@@ -76,9 +128,11 @@ describe("buildIssueBody", () => {
       passed: false,
     };
     const body = buildIssueBody(analysis, 3);
-    expect(body).toContain("1 error(s), 1 warning(s)");
+    expect(body).toContain("Assertion Failures");
     expect(body).toContain("first-contentful-paint");
     expect(body).toContain("speed-index");
+    expect(body).toContain("🔴 error");
+    expect(body).toContain("🟡 warn");
   });
 
   it("shows regressions", () => {
@@ -174,7 +228,62 @@ describe("buildIssueBody", () => {
       passed: false,
     };
     const body = buildIssueBody(analysis, 3);
-    expect(body).toContain("[View report](https://storage.example.com/report)");
+    expect(body).toContain("View Report");
+    expect(body).toContain("https://storage.example.com/report");
+  });
+
+  it("shows core web vitals table with median and range when runMetrics provided", () => {
+    const runs: Metrics[] = [
+      { "first-contentful-paint": 1000, "largest-contentful-paint": 2000, "cumulative-layout-shift": 0.05, "total-blocking-time": 100, "speed-index": 1500, interactive: 3000 },
+      { "first-contentful-paint": 1200, "largest-contentful-paint": 2200, "cumulative-layout-shift": 0.08, "total-blocking-time": 150, "speed-index": 1700, interactive: 3200 },
+      { "first-contentful-paint": 1100, "largest-contentful-paint": 2100, "cumulative-layout-shift": 0.06, "total-blocking-time": 120, "speed-index": 1600, interactive: 3100 },
+    ];
+    const analysis: AnalysisResult = {
+      urls: [
+        {
+          url: "https://example.com/",
+          pathname: "/",
+          profiles: [
+            makeProfile({
+              passed: false,
+              metrics: runs[1],
+              runMetrics: runs,
+              assertions: [{ auditId: "perf", level: "error", actual: 0.4, expected: 0.9, operator: ">=", passed: false }],
+            }),
+          ],
+          passed: false,
+        },
+      ],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+    const body = buildIssueBody(analysis, 3);
+    expect(body).toContain("Core Web Vitals");
+    expect(body).toContain("median of 3 runs");
+    expect(body).toContain("First Contentful Paint");
+    expect(body).toContain("Individual runs (3)");
+  });
+
+  it("wraps each profile in a collapsible details section", () => {
+    const analysis: AnalysisResult = {
+      urls: [
+        {
+          url: "https://example.com/",
+          pathname: "/",
+          profiles: [
+            makeProfile({ passed: false, assertions: [{ auditId: "perf", level: "error", actual: 0.4, expected: 0.9, operator: ">=", passed: false }] }),
+          ],
+          passed: false,
+        },
+      ],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+    const body = buildIssueBody(analysis, 3);
+    expect(body).toContain("<details open>");
+    expect(body).toContain("</details>");
   });
 });
 
