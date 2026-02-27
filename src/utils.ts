@@ -1,5 +1,5 @@
 import { resolve, sep } from "node:path";
-import type { AssertionResult, Regression } from "./types";
+import type { AssertionResult, MetricKey, Regression } from "./types";
 
 export function isPathSafe(inputPath: string): boolean {
   const normalized = inputPath.replace(/\\/g, "/");
@@ -64,4 +64,14 @@ export function buildRegressionsList(regressions: Regression[]): string {
   }
   md += "\n";
   return md;
+}
+
+export function fmtMetricValue(key: MetricKey, value: number): string {
+  if (key === "cumulative-layout-shift") {
+    return value.toFixed(3);
+  }
+  if (key === "total-blocking-time") {
+    return `${Math.round(value)}ms`;
+  }
+  return `${(value / 1000).toFixed(2)}s`;
 }

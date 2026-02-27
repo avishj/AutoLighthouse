@@ -45,12 +45,31 @@ export interface Regression {
 export interface ProfileResult {
   profile: Profile;
   metrics: Metrics;
+  runMetrics?: Metrics[];
   regressions: Regression[];
   assertions: AssertionResult[];
   consecutiveFailures: number;
   passed: boolean;
   reportLink?: string;
 }
+
+export const METRIC_DISPLAY_NAMES: Record<MetricKey, string> = {
+  "first-contentful-paint": "First Contentful Paint",
+  "largest-contentful-paint": "Largest Contentful Paint",
+  "cumulative-layout-shift": "Cumulative Layout Shift",
+  "total-blocking-time": "Total Blocking Time",
+  "speed-index": "Speed Index",
+  "interactive": "Time to Interactive",
+};
+
+export const METRIC_SHORT_NAMES: Record<MetricKey, string> = {
+  "first-contentful-paint": "FCP",
+  "largest-contentful-paint": "LCP",
+  "cumulative-layout-shift": "CLS",
+  "total-blocking-time": "TBT",
+  "speed-index": "SI",
+  "interactive": "TTI",
+};
 
 /** Analysis result for a single URL across all profiles. */
 export interface UrlResult {
