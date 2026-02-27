@@ -58,6 +58,7 @@ async function run(): Promise<void> {
       url: string;
       pathname: string;
       metrics: Metrics;
+      runMetrics: Metrics[];
       assertions: AssertionResult[];
       reportLink?: string;
     }> = [];
@@ -89,7 +90,7 @@ async function run(): Promise<void> {
         const urlAssertions = failedAssertions.filter((a) => !a.url || a.url === url);
         const reportLink = artifact.links[url] ?? undefined;
 
-        raw.push({ profile: artifact.profile, url, pathname, metrics, assertions: urlAssertions, reportLink });
+        raw.push({ profile: artifact.profile, url, pathname, metrics, runMetrics: allMetrics, assertions: urlAssertions, reportLink });
       }
     }
 
@@ -127,6 +128,7 @@ async function run(): Promise<void> {
       const profileResult: ProfileResult = {
         profile: r.profile,
         metrics: r.metrics,
+        runMetrics: r.runMetrics,
         regressions,
         assertions: r.assertions,
         consecutiveFailures: newConsecutive,
