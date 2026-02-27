@@ -144,6 +144,7 @@ runs:
       with:
         name: autolighthouse-${{ inputs.profile }}
         path: ${{ steps.lighthouse.outputs.resultsPath }}
+        include-hidden-files: true
         retention-days: 90
 
     # ── Report mode ─────────────────────────────────────────────
