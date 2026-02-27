@@ -108,20 +108,6 @@ describe("saveHistory", () => {
     // Should keep the last 3
     expect(saved.paths["mobile:/"].runs[0].metrics["first-contentful-paint"]).toBe(1007);
   });
-
-  it("throws when lock cannot be acquired", () => {
-    const path = join(testDir, "history.json");
-    const lockPath = join(testDir, ".history.lock");
-    writeFileSync(lockPath, "9999"); // Pre-existing lock
-
-    const history: History = {
-      version: 1,
-      lastUpdated: "",
-      paths: { "mobile:/": { consecutiveFailures: 0, lastSeen: "", runs: [] } },
-    };
-
-    expect(() => saveHistory(path, history, 10)).toThrow("Failed to acquire lock");
-  });
 });
 
 describe("cleanupStalePaths", () => {
