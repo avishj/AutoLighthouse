@@ -171,10 +171,33 @@ function setupArtifacts(
 describe("report", () => {
   beforeEach(() => {
     resetState();
+    mockValidateResultsPath.mockImplementation((path: string) => path);
     process.env.GITHUB_WORKSPACE = ".";
   });
 
   // ── Early exit ──────────────────────────────────────────────────────
+
+  describe("when results path is invalid", () => {
+    it("warns gracefully when results directory does not exist (no artifacts downloaded)", async () => {
+      await runReport(() => {
+        mockValidateResultsPath.mockReturnValue(null);
+      });
+
+      expect(failedMsg).toBeUndefined();
+      expect(warnings).toContain("Results directory does not exist — no audit artifacts were downloaded.");
+      expect(outputs["results"]).toBeUndefined();
+    });
+
+    it("fails with traversal error when path is unsafe", async () => {
+      configOverrides.resultsPath = "../../etc/passwd";
+      await runReport(() => {
+        mockValidateResultsPath.mockReturnValue(null);
+      });
+
+      expect(failedMsg).toBe("Invalid results path: path traversal detected.");
+      expect(warnings).not.toContain("Results directory does not exist — no audit artifacts were downloaded.");
+    });
+  });
 
   describe("when no audit artifacts exist", () => {
     it("warns the user and produces no outputs", async () => {
