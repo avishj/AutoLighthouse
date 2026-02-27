@@ -108,6 +108,20 @@ describe("saveHistory", () => {
     // Should keep the last 3
     expect(saved.paths["mobile:/"].runs[0].metrics["first-contentful-paint"]).toBe(1007);
   });
+
+  it("throws when lock cannot be acquired (file already exists)", async () => {
+    const path = join(testDir, "history.json");
+    const lockPath = `${path}.lock`; // Same logic as getLockPath
+    writeFileSync(lockPath, "1234"); // Pre-existing lock from another process
+
+    const history: History = {
+      version: 1,
+      lastUpdated: "",
+      paths: { "mobile:/": { consecutiveFailures: 0, lastSeen: "", runs: [] } },
+    };
+
+    await expect(saveHistory(path, history, 10)).rejects.toThrow("Failed to acquire lock");
+  });
 });
 
 describe("cleanupStalePaths", () => {
