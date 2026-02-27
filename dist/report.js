@@ -23625,6 +23625,22 @@ var METRIC_KEYS = [
   "speed-index",
   "interactive"
 ];
+var METRIC_DISPLAY_NAMES = {
+  "first-contentful-paint": "First Contentful Paint",
+  "largest-contentful-paint": "Largest Contentful Paint",
+  "cumulative-layout-shift": "Cumulative Layout Shift",
+  "total-blocking-time": "Total Blocking Time",
+  "speed-index": "Speed Index",
+  "interactive": "Time to Interactive"
+};
+var METRIC_SHORT_NAMES = {
+  "first-contentful-paint": "FCP",
+  "largest-contentful-paint": "LCP",
+  "cumulative-layout-shift": "CLS",
+  "total-blocking-time": "TBT",
+  "speed-index": "SI",
+  "interactive": "TTI"
+};
 
 // src/utils.ts
 function isPathSafe(inputPath) {
@@ -23668,6 +23684,15 @@ function buildRegressionsList(regressions) {
   }
   md += "\n";
   return md;
+}
+function fmtMetricValue(key, value) {
+  if (key === "cumulative-layout-shift") {
+    return value.toFixed(3);
+  }
+  if (key === "total-blocking-time") {
+    return `${Math.round(value)}ms`;
+  }
+  return `${(value / 1e3).toFixed(2)}s`;
 }
 
 // src/lhr.ts
@@ -23901,14 +23926,35 @@ function buildIssueBody(analysis, consecutiveFailLimit) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const branch = process.env.GITHUB_REF?.replace("refs/heads/", "") ?? "unknown";
   const commit = process.env.GITHUB_SHA?.substring(0, 7) ?? "unknown";
-  let body = `## Lighthouse Performance Alert
+  const failedUrls = analysis.urls.filter((u) => !u.passed);
+  const failingProfiles = failedUrls.flatMap((u) => u.profiles.filter((p) => !p.passed));
+  const totalProfiles = analysis.urls.reduce((s, u) => s + u.profiles.length, 0);
+  const totalErrors = failingProfiles.reduce(
+    (s, p) => s + countAssertionLevels(filterFailedAssertions(p.assertions)).errors,
+    0
+  );
+  const totalWarnings = failingProfiles.reduce(
+    (s, p) => s + countAssertionLevels(filterFailedAssertions(p.assertions)).warnings,
+    0
+  );
+  const totalRegressions = failingProfiles.reduce((s, p) => s + p.regressions.length, 0);
+  let body = `## \u{1F534} Lighthouse Performance Alert
 
 `;
-  body += `**Timestamp:** ${timestamp}
+  const parts = [];
+  if (totalErrors > 0) parts.push(`${totalErrors} error${pl(totalErrors)}`);
+  if (totalWarnings > 0) parts.push(`${totalWarnings} warning${pl(totalWarnings)}`);
+  if (totalRegressions > 0) parts.push(`${totalRegressions} regression${pl(totalRegressions)}`);
+  body += `> **${analysis.urls.length} URL${pl(analysis.urls.length)}** across `;
+  body += `**${totalProfiles} profile${pl(totalProfiles)}** \u2014 `;
+  body += `**${failingProfiles.length} failing** \xB7 ${parts.join(" \xB7 ")}
+
 `;
-  body += `**Branch:** ${branch}
+  body += buildStatusMatrix(analysis);
+  body += `\`${branch}\` \xB7 \`${commit}\` \xB7 ${fmtDate(timestamp)}
+
 `;
-  body += `**Commit:** ${commit}
+  body += `---
 
 `;
   for (const url of analysis.urls) {
@@ -23918,35 +23964,166 @@ function buildIssueBody(analysis, consecutiveFailLimit) {
 `;
     for (const pr of url.profiles) {
       if (pr.passed) continue;
-      body += `#### ${pr.profile}
-
-`;
-      if (pr.reportLink) {
-        body += `[View report](${pr.reportLink})
-
-`;
-      }
-      const failures = filterFailedAssertions(pr.assertions);
-      if (failures.length > 0) {
-        const { errors, warnings } = countAssertionLevels(failures);
-        body += `**Assertion Failures:** ${errors} error(s), ${warnings} warning(s)
-
-`;
-        body += buildAssertionTable(failures);
-      }
-      if (pr.regressions.length > 0) {
-        body += buildRegressionsList(pr.regressions);
-      }
-      if (pr.consecutiveFailures >= consecutiveFailLimit) {
-        body += `\u26A0\uFE0F **Persistent failure** \u2014 ${pr.consecutiveFailures} consecutive runs
-
-`;
-      }
+      body += buildProfileSection(pr, consecutiveFailLimit);
     }
   }
   body += `---
-_This issue is auto-managed by AutoLighthouse._`;
+
+`;
+  const runCount = failingProfiles[0]?.runMetrics?.length;
+  body += `<sub>\u{1F916} Auto-managed by AutoLighthouse`;
+  if (runCount && runCount > 1) body += ` \xB7 ${runCount} runs per profile`;
+  body += `</sub>`;
   return body;
+}
+function pl(n) {
+  return n !== 1 ? "s" : "";
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${hh}:${mm} UTC`;
+}
+function profileStatusIcon(pr) {
+  const failures = filterFailedAssertions(pr.assertions);
+  const { errors } = countAssertionLevels(failures);
+  if (errors > 0) return "\u{1F534}";
+  if (failures.length > 0) return "\u{1F7E1}";
+  if (pr.regressions.length > 0) return "\u{1F4C9}";
+  return "\u{1F7E2}";
+}
+function buildStatusMatrix(analysis) {
+  const profileSet = /* @__PURE__ */ new Set();
+  for (const url of analysis.urls) {
+    for (const p of url.profiles) profileSet.add(p.profile);
+  }
+  const profiles = Array.from(profileSet);
+  if (profiles.length === 0) return "";
+  const icons = { desktop: "\u{1F5A5}\uFE0F", mobile: "\u{1F4F1}", tablet: "\u{1F4F1}" };
+  let md = `| URL |`;
+  for (const p of profiles) md += ` ${icons[p] ?? ""} ${p} |`;
+  md += `
+|-----|`;
+  for (const _ of profiles) md += `:---:|`;
+  md += `
+`;
+  for (const url of analysis.urls) {
+    md += `| \`${url.pathname}\` |`;
+    for (const name of profiles) {
+      const pr = url.profiles.find((p) => p.profile === name);
+      if (!pr) {
+        md += ` \u2014 |`;
+        continue;
+      }
+      md += ` ${profileStatusIcon(pr)} |`;
+    }
+    md += `
+`;
+  }
+  md += `
+`;
+  return md;
+}
+function buildProfileSection(pr, consecutiveFailLimit) {
+  const icon = profileStatusIcon(pr);
+  let md = `<details open>
+<summary><b>${icon} ${pr.profile}</b>`;
+  const failures = filterFailedAssertions(pr.assertions);
+  if (failures.length > 0) {
+    const { errors, warnings } = countAssertionLevels(failures);
+    const counts = [];
+    if (errors > 0) counts.push(`${errors} error${pl(errors)}`);
+    if (warnings > 0) counts.push(`${warnings} warning${pl(warnings)}`);
+    md += ` \xB7 ${counts.join(", ")}`;
+  }
+  if (pr.regressions.length > 0) {
+    md += ` \xB7 ${pr.regressions.length} regression${pl(pr.regressions.length)}`;
+  }
+  if (pr.reportLink) {
+    md += ` \xB7 <a href="${pr.reportLink}">View Report \u2197</a>`;
+  }
+  md += `</summary>
+
+`;
+  if (failures.length > 0) {
+    md += `**Assertion Failures**
+
+`;
+    md += `| Audit | Level | Actual | Threshold |
+`;
+    md += `|-------|-------|--------|----------|
+`;
+    for (const a of failures) {
+      const lvl = a.level === "error" ? "\u{1F534} error" : "\u{1F7E1} warn";
+      md += `| ${a.auditId} | ${lvl} | ${a.actual ?? "\u2014"} | ${a.operator ?? ""} ${a.expected ?? "\u2014"} |
+`;
+    }
+    md += "\n";
+  }
+  if (pr.regressions.length > 0) {
+    md += buildRegressionsList(pr.regressions);
+  }
+  const runs = pr.runMetrics;
+  if (runs && runs.length > 0) {
+    md += buildMetricsTable(pr.metrics, runs);
+  }
+  if (pr.consecutiveFailures >= consecutiveFailLimit) {
+    md += `> \u26A0\uFE0F **Persistent failure** \u2014 ${pr.consecutiveFailures} consecutive runs
+
+`;
+  }
+  md += `</details>
+
+`;
+  return md;
+}
+function buildMetricsTable(median, runs) {
+  let md = `**Core Web Vitals** _(median of ${runs.length} run${pl(runs.length)})_
+
+`;
+  md += `| Metric | Median | Range |
+`;
+  md += `|--------|-------:|------:|
+`;
+  for (const key of METRIC_KEYS) {
+    const medVal = median[key];
+    if (medVal === void 0) continue;
+    const sorted = runs.map((r) => r[key]).filter((v) => v !== void 0).sort((a, b) => a - b);
+    if (sorted.length === 0) continue;
+    const range = `${fmtMetricValue(key, sorted[0])} \u2013 ${fmtMetricValue(key, sorted[sorted.length - 1])}`;
+    md += `| ${METRIC_DISPLAY_NAMES[key]} | ${fmtMetricValue(key, medVal)} | ${range} |
+`;
+  }
+  md += "\n";
+  if (runs.length > 1) {
+    md += `<details>
+<summary>\u{1F4CA} Individual runs (${runs.length})</summary>
+
+`;
+    md += `| # |`;
+    for (const key of METRIC_KEYS) md += ` ${METRIC_SHORT_NAMES[key]} |`;
+    md += `
+|---|`;
+    for (const _ of METRIC_KEYS) md += `---:|`;
+    md += `
+`;
+    for (let i = 0; i < runs.length; i++) {
+      md += `| ${i + 1} |`;
+      for (const key of METRIC_KEYS) {
+        const v = runs[i][key];
+        md += ` ${v !== void 0 ? fmtMetricValue(key, v) : "\u2014"} |`;
+      }
+      md += `
+`;
+    }
+    md += `
+</details>
+
+`;
+  }
+  return md;
 }
 async function manageIssue(octokit, analysis, consecutiveFailLimit) {
   const existingIssue = await findOpenIssue(octokit);
@@ -24081,16 +24258,25 @@ async function run() {
     const raw = [];
     for (const artifact of artifacts) {
       const failedAssertions = artifact.assertions.filter((a) => !a.passed);
+      const lhrsByUrl = /* @__PURE__ */ new Map();
       for (const lhrPath of artifact.lhrPaths) {
         const lhr = parseLhr(lhrPath);
         if (!lhr) continue;
         const url = extractUrl(lhr);
         if (!url) continue;
-        const pathname = extractPathname(url);
         const metrics = extractMetrics(lhr);
+        let entry = lhrsByUrl.get(url);
+        if (!entry) {
+          entry = { pathname: extractPathname(url), allMetrics: [] };
+          lhrsByUrl.set(url, entry);
+        }
+        entry.allMetrics.push(metrics);
+      }
+      for (const [url, { pathname, allMetrics }] of lhrsByUrl) {
+        const metrics = medianMetrics(allMetrics);
         const urlAssertions = failedAssertions.filter((a) => !a.url || a.url === url);
         const reportLink = artifact.links[url] ?? void 0;
-        raw.push({ profile: artifact.profile, url, pathname, metrics, assertions: urlAssertions, reportLink });
+        raw.push({ profile: artifact.profile, url, pathname, metrics, runMetrics: allMetrics, assertions: urlAssertions, reportLink });
       }
     }
     const urlMap = /* @__PURE__ */ new Map();
@@ -24119,6 +24305,7 @@ async function run() {
       const profileResult = {
         profile: r.profile,
         metrics: r.metrics,
+        runMetrics: r.runMetrics,
         regressions,
         assertions: r.assertions,
         consecutiveFailures: newConsecutive,
@@ -24185,6 +24372,15 @@ async function run() {
       setFailed(error2.message);
     }
   }
+}
+function medianMetrics(allMetrics) {
+  if (allMetrics.length === 1) return allMetrics[0];
+  const result = {};
+  for (const key of METRIC_KEYS) {
+    const values = allMetrics.map((m) => m[key]).filter((v) => v !== void 0).sort((a, b) => a - b);
+    result[key] = values.length > 0 ? values[Math.floor(values.length / 2)] : void 0;
+  }
+  return result;
 }
 function extractPathname(url) {
   try {
