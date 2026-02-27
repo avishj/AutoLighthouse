@@ -126,7 +126,7 @@ runs:
         runs: ${{ inputs.runs }}
 
     - name: Save audit metadata
-      if: inputs.mode == 'audit'
+      if: ${{ !cancelled() && inputs.mode == 'audit' && steps.lighthouse.outputs.resultsPath != '' }}
       shell: bash
       env:
         RESULTS_PATH: ${{ steps.lighthouse.outputs.resultsPath }}
@@ -139,7 +139,7 @@ runs:
         echo "$PROFILE" > "$RESULTS_PATH/profile.txt"
 
     - name: Upload audit results
-      if: inputs.mode == 'audit'
+      if: ${{ !cancelled() && inputs.mode == 'audit' && steps.lighthouse.outputs.resultsPath != '' }}
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: autolighthouse-${{ inputs.profile }}

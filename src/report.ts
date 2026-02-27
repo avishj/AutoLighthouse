@@ -1,11 +1,14 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { parseConfig } from "./config";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { discoverArtifacts, parseLhr, extractMetrics, extractUrl, validateResultsPath } from "./lhr";
 import { detectRegressions } from "./regression";
 import { loadHistory, saveHistory, cleanupStalePaths, validateHistoryPath } from "./history";
 import { manageIssue } from "./issues";
 import { buildSummary } from "./summary";
+import { isPathSafe } from "./utils";
 import type {
   Profile,
   Metrics,
@@ -22,8 +25,13 @@ async function run(): Promise<void> {
     
     const workspace = process.env.GITHUB_WORKSPACE || ".";
     const safeResultsPath = validateResultsPath(config.resultsPath, workspace);
-    if (!safeResultsPath) {
-      core.setFailed("Invalid results path: path traversal detected or path does not exist.");
+    if (safeResultsPath === null) {
+      // Distinguish missing directory (no artifacts downloaded) from path traversal
+      if (isPathSafe(config.resultsPath) && !existsSync(resolve(workspace, config.resultsPath))) {
+        core.warning("Results directory does not exist — no audit artifacts were downloaded.");
+        return;
+      }
+      core.setFailed("Invalid results path: path traversal detected.");
       return;
     }
     
