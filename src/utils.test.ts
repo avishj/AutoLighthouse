@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validatePathTraversal, isPathSafe, fmt, filterFailedAssertions, countAssertionLevels, buildAssertionTable, buildRegressionsList } from "./utils";
 import type { AssertionResult, Regression, MetricKey } from "./types";
+import { resolve } from "node:path";
 
 describe("isPathSafe", () => {
   it("allows simple relative paths", () => {
@@ -34,12 +35,12 @@ describe("isPathSafe", () => {
 describe("validatePathTraversal", () => {
   it("resolves a safe nested path", () => {
     const result = validatePathTraversal("subdir/file.txt", "/app/data");
-    expect(result).toBe("/app/data/subdir/file.txt");
+    expect(result).toBe(resolve("/app/data", "subdir/file.txt"));
   });
 
   it("allows direct child of base path", () => {
     const result = validatePathTraversal("config.json", "/app");
-    expect(result).toBe("/app/config.json");
+    expect(result).toBe(resolve("/app", "config.json"));
   });
 
   it("blocks path traversal with double dot", () => {
@@ -59,22 +60,22 @@ describe("validatePathTraversal", () => {
 
   it("allows exact base path", () => {
     const result = validatePathTraversal(".", "/app/data");
-    expect(result).toBe("/app/data");
+    expect(result).toBe(resolve("/app/data"));
   });
 
   it("allows empty path (treated as base)", () => {
     const result = validatePathTraversal("", "/app/data");
-    expect(result).toBe("/app/data");
+    expect(result).toBe(resolve("/app/data"));
   });
 
   it("normalizes slashes in user path", () => {
     const result = validatePathTraversal("a/b/c", "/app/data");
-    expect(result).toBe("/app/data/a/b/c");
+    expect(result).toBe(resolve("/app/data", "a/b/c"));
   });
 
   it("allows paths at root base", () => {
     const result = validatePathTraversal("file.txt", "/");
-    expect(result).toBe("/file.txt");
+    expect(result).toBe(resolve("/", "file.txt"));
   });
 });
 
