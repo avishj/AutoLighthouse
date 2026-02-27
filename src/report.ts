@@ -149,8 +149,12 @@ async function run(): Promise<void> {
           core.info(`Cleaned up ${removed.length} stale history path(s): ${removed.join(", ")}`);
         }
       }
-      saveHistory(historyPath, history, config.maxHistoryRuns);
-      core.info(`History saved to ${historyPath}`);
+      try {
+        await saveHistory(historyPath, history, config.maxHistoryRuns);
+        core.info(`History saved to ${historyPath}`);
+      } catch (err) {
+        core.warning(`Failed to save history: ${err instanceof Error ? err.message : err}`);
+      }
     }
 
     // Issue management
