@@ -1,5 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { validatePathTraversal } from "./utils";
+import { validatePathTraversal, isPathSafe } from "./utils";
+
+describe("isPathSafe", () => {
+  it("allows simple relative paths", () => {
+    expect(isPathSafe("config.json")).toBe(true);
+    expect(isPathSafe("data/file.txt")).toBe(true);
+  });
+
+  it("blocks absolute Unix paths", () => {
+    expect(isPathSafe("/etc/passwd")).toBe(false);
+    expect(isPathSafe("/root/.ssh")).toBe(false);
+  });
+
+  it("blocks absolute Windows paths", () => {
+    expect(isPathSafe("C:\\Windows")).toBe(false);
+    expect(isPathSafe("D:/Users")).toBe(false);
+  });
+
+  it("blocks path traversal attempts", () => {
+    expect(isPathSafe("../secrets")).toBe(false);
+    expect(isPathSafe("foo/../bar")).toBe(false);
+    expect(isPathSafe("foo/bar/../../etc")).toBe(false);
+  });
+
+  it("allows paths with dots in filenames", () => {
+    expect(isPathSafe("file.json")).toBe(true);
+    expect(isPathSafe("dir/.hidden")).toBe(true);
+    expect(isPathSafe("dir/.../file")).toBe(true);
+  });
+});
 
 describe("validatePathTraversal", () => {
   it("resolves a safe nested path", () => {
