@@ -8,7 +8,9 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       reportsDirectory: "coverage",
+      exclude: ["src/presets/**/*.json"],
       thresholds: {
+        perFile: true,
         lines: 80,
         functions: 80,
         branches: 80,
