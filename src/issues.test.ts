@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { buildIssueBody } from "./issues";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { buildIssueBody, manageIssue, findOpenIssue } from "./issues";
 import type { AnalysisResult, ProfileResult, Metrics } from "./types";
+import * as github from "@actions/github";
 
 function makeMetrics(): Metrics {
   return {
@@ -174,5 +175,165 @@ describe("buildIssueBody", () => {
     };
     const body = buildIssueBody(analysis, 3);
     expect(body).toContain("[View report](https://storage.example.com/report)");
+  });
+});
+
+describe("manageIssue", () => {
+  beforeEach(() => {
+    vi.spyOn(github.context, "repo", "get").mockReturnValue({ owner: "test-owner", repo: "test-repo" });
+    process.env.GITHUB_REF = "refs/heads/main";
+    process.env.GITHUB_SHA = "abc1234567890";
+  });
+
+  it("creates issue when analysis fails and no existing issue", async () => {
+    const createFn = vi.fn().mockResolvedValue({});
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockResolvedValue({ data: [] }),
+          create: createFn,
+          createLabel: vi.fn().mockResolvedValue({}),
+        },
+      },
+    } as any;
+
+    const analysis: AnalysisResult = {
+      urls: [{ url: "https://example.com/", pathname: "/", profiles: [], passed: false }],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+
+    await manageIssue(mockOctokit, analysis, 3);
+
+    expect(createFn).toHaveBeenCalled();
+  });
+
+  it("comments on existing issue when analysis fails", async () => {
+    const commentFn = vi.fn().mockResolvedValue({});
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockResolvedValue({ data: [{ number: 5, title: "Lighthouse Performance Alert" }] }),
+          createComment: commentFn,
+        },
+      },
+    } as any;
+
+    const analysis: AnalysisResult = {
+      urls: [{ url: "https://example.com/", pathname: "/", profiles: [], passed: false }],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: false,
+    };
+
+    await manageIssue(mockOctokit, analysis, 3);
+
+    expect(commentFn).toHaveBeenCalled();
+  });
+
+  it("closes issue when analysis passes", async () => {
+    const commentFn = vi.fn().mockResolvedValue({});
+    const updateFn = vi.fn().mockResolvedValue({});
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockResolvedValue({ data: [{ number: 5, title: "Lighthouse Performance Alert" }] }),
+          createComment: commentFn,
+          update: updateFn,
+        },
+      },
+    } as any;
+
+    const analysis: AnalysisResult = {
+      urls: [],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: true,
+    };
+
+    await manageIssue(mockOctokit, analysis, 3);
+
+    expect(commentFn).toHaveBeenCalled();
+    expect(updateFn).toHaveBeenCalledWith(
+      expect.objectContaining({ state: "closed" })
+    );
+  });
+
+  it("does nothing when analysis passes and no existing issue", async () => {
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockResolvedValue({ data: [] }),
+        },
+      },
+    } as any;
+
+    const analysis: AnalysisResult = {
+      urls: [],
+      allRegressions: [],
+      hasRegressions: false,
+      passed: true,
+    };
+
+    await manageIssue(mockOctokit, analysis, 3);
+  });
+});
+
+describe("ensureLabels", () => {
+  beforeEach(() => {
+    vi.spyOn(github.context, "repo", "get").mockReturnValue({ owner: "test-owner", repo: "test-repo" });
+  });
+
+  it("creates labels when they don't exist", async () => {
+    const createLabelFn = vi.fn().mockResolvedValue({});
+    const mockOctokit = {
+      rest: {
+        issues: {
+          createLabel: createLabelFn,
+        },
+      },
+    } as any;
+
+    await (await import("./issues")).ensureLabels(mockOctokit);
+
+    expect(createLabelFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles 422 error (label already exists)", async () => {
+    const createLabelFn = vi.fn()
+      .mockRejectedValueOnce({ status: 422 }) // First label exists
+      .mockResolvedValueOnce({}); // Second label created
+    const mockOctokit = {
+      rest: {
+        issues: {
+          createLabel: createLabelFn,
+        },
+      },
+    } as any;
+
+    const result = await (await import("./issues")).ensureLabels(mockOctokit);
+
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe("findOpenIssue", () => {
+  beforeEach(() => {
+    vi.spyOn(github.context, "repo", "get").mockReturnValue({ owner: "test-owner", repo: "test-repo" });
+  });
+
+  it("returns null on API error", async () => {
+    const mockOctokit = {
+      rest: {
+        issues: {
+          listForRepo: vi.fn().mockRejectedValue(new Error("API error")),
+        },
+      },
+    } as any;
+
+    const result = await (await import("./issues")).findOpenIssue(mockOctokit);
+
+    expect(result).toBeNull();
   });
 });

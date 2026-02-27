@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { extractMetrics, extractUrl, parseLhr, discoverArtifacts } from "./lhr";
+import { extractMetrics, extractUrl, parseLhr, discoverArtifacts, validateResultsPath } from "./lhr";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -187,5 +187,76 @@ describe("discoverArtifacts", () => {
     const artifacts = discoverArtifacts(testDir);
     expect(artifacts[0].assertions).toEqual([]);
     expect(artifacts[0].links).toEqual({});
+  });
+
+  it("returns empty assertions for invalid JSON in assertion-results.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "assertion-results.json"), "not valid json");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].assertions).toEqual([]);
+  });
+
+  it("returns empty links for invalid JSON in links.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "links.json"), "not valid json");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].links).toEqual({});
+  });
+
+  it("returns empty links for non-object in links.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "links.json"), "123");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].links).toEqual({});
+  });
+});
+
+describe("validateResultsPath", () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `validate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
+  });
+
+  it("returns resolved path for valid relative path", () => {
+    const result = validateResultsPath(".", testDir);
+    expect(result).toBe(testDir);
+  });
+
+  it("blocks path traversal attempt", () => {
+    const result = validateResultsPath("../secrets", testDir);
+    expect(result).toBeNull();
+  });
+
+  it("blocks path outside workspace", () => {
+    const result = validateResultsPath("/etc/passwd", testDir);
+    expect(result).toBeNull();
+  });
+
+  it("blocks non-existent paths", () => {
+    const result = validateResultsPath("nonexistent", testDir);
+    expect(result).toBeNull();
+  });
+
+  it("blocks unsafe paths", () => {
+    const result = validateResultsPath("/absolute/path", testDir);
+    expect(result).toBeNull();
   });
 });

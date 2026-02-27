@@ -5,6 +5,7 @@
 **Maximalist Lighthouse CI for GitHub Actions. Zero config. No hosted server.**
 
 [![CI](https://github.com/avishj/AutoLighthouse/actions/workflows/ci.yml/badge.svg)](https://github.com/avishj/AutoLighthouse/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/avishj/AutoLighthouse/branch/main/graph/badge.svg)](https://codecov.io/gh/avishj/AutoLighthouse)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![GitHub Action](https://img.shields.io/badge/action-AutoLighthouse-orange?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/autolighthouse)
 
