@@ -188,6 +188,39 @@ describe("discoverArtifacts", () => {
     expect(artifacts[0].assertions).toEqual([]);
     expect(artifacts[0].links).toEqual({});
   });
+
+  it("returns empty assertions for invalid JSON in assertion-results.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "assertion-results.json"), "not valid json");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].assertions).toEqual([]);
+  });
+
+  it("returns empty links for invalid JSON in links.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "links.json"), "not valid json");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].links).toEqual({});
+  });
+
+  it("returns empty links for non-object in links.json", () => {
+    const dir = join(testDir, "autolighthouse-mobile");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "profile.txt"), "mobile");
+    writeFileSync(join(dir, "lhr-0.json"), "{}");
+    writeFileSync(join(dir, "links.json"), "123");
+
+    const artifacts = discoverArtifacts(testDir);
+    expect(artifacts[0].links).toEqual({});
+  });
 });
 
 describe("validateResultsPath", () => {
