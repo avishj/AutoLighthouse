@@ -71,6 +71,11 @@ describe("validatePathTraversal", () => {
     const result = validatePathTraversal("a/b/c", "/app/data");
     expect(result).toBe("/app/data/a/b/c");
   });
+
+  it("allows paths at root base", () => {
+    const result = validatePathTraversal("file.txt", "/");
+    expect(result).toBe("/file.txt");
+  });
 });
 
 describe("fmt", () => {
@@ -129,6 +134,15 @@ describe("buildAssertionTable", () => {
     expect(result).toContain("error");
     expect(result).toContain("0.4");
     expect(result).toContain(">= 0.9");
+  });
+
+  it("handles assertions with null values", () => {
+    const assertions = [
+      { auditId: "some-audit", level: "error", actual: undefined, expected: undefined, operator: undefined, passed: false },
+    ];
+    const result = buildAssertionTable(assertions as any);
+    expect(result).toContain("some-audit");
+    expect(result).toContain("—"); // null values replaced with em-dash
   });
 });
 
