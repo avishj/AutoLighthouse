@@ -65,7 +65,7 @@ describe("loadHistory", () => {
 });
 
 describe("saveHistory", () => {
-  it("creates parent directories and writes file", () => {
+  it("creates parent directories and writes file", async () => {
     const path = join(testDir, "nested", "deep", "history.json");
     const history: History = {
       version: 1,
@@ -79,7 +79,7 @@ describe("saveHistory", () => {
       },
     };
 
-    saveHistory(path, history, 100);
+    await saveHistory(path, history, 100);
 
     expect(existsSync(path)).toBe(true);
     const saved = JSON.parse(readFileSync(path, "utf-8"));
@@ -88,7 +88,7 @@ describe("saveHistory", () => {
     expect(saved.paths["mobile:/"]).toBeDefined();
   });
 
-  it("trims runs to maxRunsPerKey", () => {
+  it("trims runs to maxRunsPerKey", async () => {
     const path = join(testDir, "history.json");
     const runs = Array.from({ length: 10 }, (_, i) => ({
       metrics: makeMetrics({ "first-contentful-paint": 1000 + i }),
@@ -101,7 +101,7 @@ describe("saveHistory", () => {
       paths: { "mobile:/": { consecutiveFailures: 0, lastSeen: "", runs } },
     };
 
-    saveHistory(path, history, 3);
+    await saveHistory(path, history, 3);
 
     const saved = JSON.parse(readFileSync(path, "utf-8"));
     expect(saved.paths["mobile:/"].runs).toHaveLength(3);
