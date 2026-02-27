@@ -40,7 +40,13 @@ function resetState() {
   Object.keys(configOverrides).forEach((k) => delete (configOverrides as Record<string, unknown>)[k]);
 }
 
+let mockFsExistsSync = true;
+
 function applyDoMocks() {
+  vi.doMock("node:fs", () => ({
+    existsSync: (path: string) => mockFsExistsSync,
+  }));
+
   vi.doMock("@actions/core", () => ({
     setOutput: (k: string, v: string) => { outputs[k] = v; },
     setFailed: (msg: string) => { failedMsg = msg; },
@@ -179,9 +185,11 @@ describe("report", () => {
 
   describe("when results path is invalid", () => {
     it("warns gracefully when results directory does not exist (no artifacts downloaded)", async () => {
+      mockFsExistsSync = false;
       await runReport(() => {
         mockValidateResultsPath.mockReturnValue(null);
       });
+      mockFsExistsSync = true;
 
       expect(failedMsg).toBeUndefined();
       expect(warnings).toContain("Results directory does not exist — no audit artifacts were downloaded.");
