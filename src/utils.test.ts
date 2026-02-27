@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { validatePathTraversal, isPathSafe } from "./utils";
+import { validatePathTraversal, isPathSafe, fmt, filterFailedAssertions, countAssertionLevels, buildAssertionTable, buildRegressionsList } from "./utils";
+import type { AssertionResult, Regression, MetricKey } from "./types";
 
 describe("isPathSafe", () => {
   it("allows simple relative paths", () => {
@@ -69,5 +70,81 @@ describe("validatePathTraversal", () => {
   it("normalizes slashes in user path", () => {
     const result = validatePathTraversal("a/b/c", "/app/data");
     expect(result).toBe("/app/data/a/b/c");
+  });
+});
+
+describe("fmt", () => {
+  it("formats single-digit numbers with 3 decimal places", () => {
+    expect(fmt(0)).toBe("0.000");
+    expect(fmt(9.999)).toBe("9.999");
+  });
+
+  it("formats double-digit numbers with 1 decimal place", () => {
+    expect(fmt(10)).toBe("10.0");
+    expect(fmt(99.9)).toBe("99.9");
+    expect(fmt(100)).toBe("100.0");
+  });
+});
+
+describe("filterFailedAssertions", () => {
+  it("filters to only failed assertions", () => {
+    const assertions = [
+      { auditId: "a", passed: true },
+      { auditId: "b", passed: false },
+      { auditId: "c", passed: false },
+      { auditId: "d", passed: true },
+    ];
+    const result = filterFailedAssertions(assertions as any);
+    expect(result).toHaveLength(2);
+    expect(result.map((a: any) => a.auditId)).toEqual(["b", "c"]);
+  });
+});
+
+describe("countAssertionLevels", () => {
+  it("counts errors and warnings separately", () => {
+    const assertions = [
+      { level: "error" },
+      { level: "error" },
+      { level: "warn" },
+      { level: "warn" },
+      { level: "warn" },
+    ];
+    const result = countAssertionLevels(assertions as any);
+    expect(result).toEqual({ errors: 2, warnings: 3 });
+  });
+});
+
+describe("buildAssertionTable", () => {
+  it("returns empty string for no assertions", () => {
+    expect(buildAssertionTable([])).toBe("");
+  });
+
+  it("builds markdown table with assertion details", () => {
+    const assertions = [
+      { auditId: "first-contentful-paint", level: "error", actual: 0.4, expected: 0.9, operator: ">=", passed: false },
+    ];
+    const result = buildAssertionTable(assertions as any);
+    expect(result).toContain("| Audit | Level | Actual | Threshold |");
+    expect(result).toContain("first-contentful-paint");
+    expect(result).toContain("error");
+    expect(result).toContain("0.4");
+    expect(result).toContain(">= 0.9");
+  });
+});
+
+describe("buildRegressionsList", () => {
+  it("returns empty string for no regressions", () => {
+    expect(buildRegressionsList([])).toBe("");
+  });
+
+  it("builds markdown list with regression details", () => {
+    const regressions: Regression[] = [
+      { metric: "first-contentful-paint", current: 1500, avg: 1000, percentChange: "50.0%" },
+    ];
+    const result = buildRegressionsList(regressions);
+    expect(result).toContain("**Regressions:**");
+    expect(result).toContain("first-contentful-paint");
+    expect(result).toContain("1000.0 → 1500.0");
+    expect(result).toContain("50.0%");
   });
 });
